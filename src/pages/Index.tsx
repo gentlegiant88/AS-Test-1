@@ -124,104 +124,95 @@ const Index = () => {
     return () => clearInterval(timer);
   }, []);
 
-         const handleBid = async (e: React.FormEvent) => {
- e.preventDefault();
- if (isAuctionEnded) {
- toast({ title: "Auction Ended", description: "Bidding is no longer allowed.", variant: "destructive" });
- return;
- }
- if (!name) {
- toast({ title: "Name required", description: "Please enter your full name to place a bid.", variant: "destructive" });
- return;
- }
- if (!email) {
- toast({ title: "Email required", description: "Please enter your email to place a bid.", variant: "destructive" });
- return;
- }
- if (!currentUser && !pin) {
- toast({ title: "PIN required", description: "Please set a security PIN to protect your bid.", variant: "destructive" });
- return;
- }
+           const handleBid = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (isAuctionEnded) {
+      toast({ title: "Auction Ended", description: "Bidding is no longer allowed.", variant: "destructive" });
+      return;
+    }
+    if (!name || !email) {
+      toast({ title: "Name & Email required", variant: "destructive" });
+      return;
+    }
+    if (!currentUser && !pin) {
+      toast({ title: "PIN required", variant: "destructive" });
+      return;
+    }
 
- const amount = parseFloat(bidAmount.replace(/,/g, ''));
- 
- if (isNaN(amount)) {
- toast({ title: "Invalid amount", description: "Please enter a valid number.", variant: "destructive" });
- return;
- }
- 
- if (amount < minNextBid) {
- toast({ title: "Bid too low", description: `Minimum next bid is $${minNextBid.toLocaleString()}`, variant: "destructive" });
- return;
- }
+    const amount = parseFloat(bidAmount.replace(/,/g, ''));
+    if (isNaN(amount) || amount < minNextBid) {
+      toast({ title: "Bid too low", description: `Minimum next bid is $${minNextBid.toLocaleString()}`, variant: "destructive" });
+      return;
+    }
 
- try {
- // Send bid to global backend
- const res = await fetch(`${API_BASE}/api/place-bid`, {
- method: "POST",
- headers: { "Content-Type": "application/json" },
- body: JSON.stringify({ 
- amount: minNextBid, 
- name, 
- email, 
- pin: currentUser?.pin || pin 
- })
- });
+    try {
+      // 1. Send to global backend
+      const res = await fetch(`${API_BASE}/api/place-bid`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          amount: minNextBid, 
+          maxAmount: amount,
+          name, 
+          email, 
+          pin: currentUser?.pin || pin 
+        })
+      });
 
- const result = await res.json();
+      const result = await res.json();
 
- if (result.success) {
- setCurrentUser({ name, email, pin: currentUser?.pin || pin });
- setBidAmount("");
+      if (result.success) {
+        setCurrentUser({ name, email, pin: currentUser?.pin || pin });
+        setBidAmount("");
 
- // Send tracking to GoHighLevel
- const trackingPayload = {
- type: "external_form_submission",
- timestamp: Date.now(),
- formId: "Auction Bid Form",
- formData: {
- first_name: name,
- email: email,
- "contact.security_pin": currentUser?.pin || pin,
- "contact.maximum_bid": amount,
- },
- formLabels: {
- first_name: "Full Name",
- email: "Email Address",
- "contact.security_pin": "Security PIN",
- "contact.maximum_bid": "Maximum Bid",
- },
- url: window.location.href,
- title: document.title,
- path: window.location.pathname,
- userAgent: navigator.userAgent,
- trackingId: "tk_84945ef98ad64c818d00ae3bcd173cfc ",
- locationId: "H71py0LtXYeIKk7smCSK",
- sessionId: crypto.randomUUID(),
- properties: {
- deviceType: /Mobile|Android|iPhone/i.test(navigator.userAgent) ? "mobile" : "desktop",
- },
- };
+        // 2. Send tracking to GoHighLevel (your original tracking)
+        const trackingPayload = {
+          type: "external_form_submission",
+          timestamp: Date.now(),
+          formId: "Auction Bid Form",
+          formData: {
+            first_name: name,
+            email: email,
+            "contact.security_pin": currentUser?.pin || pin,
+            "contact.maximum_bid": amount,
+          },
+          formLabels: {
+            first_name: "Full Name",
+            email: "Email Address",
+            "contact.security_pin": "Security PIN",
+            "contact.maximum_bid": "Maximum Bid",
+          },
+          url: window.location.href,
+          title: document.title,
+          path: window.location.pathname,
+          userAgent: navigator.userAgent,
+          trackingId: "tk_84945ef98ad64c818d00ae3bcd173cfc",
+          locationId: "H71py0LtXYeIKk7smCSK",
+          sessionId: crypto.randomUUID(),
+          properties: {
+            deviceType: /Mobile|Android|iPhone/i.test(navigator.userAgent) ? "mobile" : "desktop",
+          },
+        };
 
- fetch("https://backend.leadconnectorhq.com/external-tracking/events", {
- method: "POST",
- headers: {
- "Content-Type": "application/json",
- version: "2021-07-28",
- },
- body: JSON.stringify(trackingPayload),
- }).catch(() => {});
+        fetch("https://backend.leadconnectorhq.com/external-tracking/events", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            version: "2021-07-28",
+          },
+          body: JSON.stringify(trackingPayload),
+        }).catch(() => {});
 
- toast({ 
- title: "Bid placed successfully!", 
- description: `You are now the highest bidder at $${minNextBid.toLocaleString()}`,
- className: "bg-primary text-primary-foreground border-none"
- });
- }
- } catch (err) {
- toast({ title: "Failed to place bid", variant: "destructive" });
- }
- };
+        toast({ 
+          title: "Bid placed successfully!", 
+          description: `You are now the highest bidder at $${minNextBid.toLocaleString()}`,
+          className: "bg-primary text-primary-foreground border-none"
+        });
+      }
+    } catch (err) {
+      toast({ title: "Failed to place bid", variant: "destructive" });
+    }
+  };
   
     const handleUpdateMaxBid = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -547,7 +538,7 @@ const Index = () => {
                       onChange={(e) => setName(e.target.value)}
                       className="h-14 text-lg bg-background/50 border-border focus-visible:ring-primary"
                       required
-                      disabled={!!currentUser}
+                      
                     />
                   </div>
                   <div className="space-y-2">
@@ -559,7 +550,7 @@ const Index = () => {
                       onChange={(e) => setEmail(e.target.value)}
                       className="h-14 text-lg bg-background/50 border-border focus-visible:ring-primary"
                       required
-                      disabled={!!currentUser}
+                      
                     />
                   </div>
                   {!currentUser && (
