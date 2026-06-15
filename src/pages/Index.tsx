@@ -3,23 +3,20 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Clock, TrendingUp, ShieldCheck, Globe, History, ArrowRight, Activity, Award, CheckCircle, Bot, LogIn, LogOut, Lock } from "lucide-react";
+import { Clock, TrendingUp, ShieldCheck, Globe, History, ArrowRight, Activity, Award, CheckCircle, Bot, LogIn, LogOut } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const API_BASE = "https://auction-backend.daniel-hendricks1337.workers.dev";
 const DOMAIN_NAME = "lasvegascybertruck.com";
-const AUCTION_END_DATE = new Date("2026-06-16T00:00:00-07:00"); // Midnight Pacific Time (end of June 14th)
+const AUCTION_END_DATE = new Date("2026-06-16T00:00:00-07:00");
 
 interface Bid {
   id: string;
   amount: number;
-  bidder: string;
   name?: string;
   email?: string;
   pin?: string;
-  isAutoBid?: boolean;
   maxAmount?: number;
   timestamp: Date;
 }
@@ -27,9 +24,7 @@ interface Bid {
 const Index = () => {
   const { toast } = useToast();
 
-  // Global bids from backend
   const [bids, setBids] = useState<Bid[]>([]);
-
   const [bidAmount, setBidAmount] = useState<string>("");
   const [name, setName] = useState<string>("");
   const [email, setEmail] = useState<string>("");
@@ -38,34 +33,25 @@ const Index = () => {
   const [currentUser, setCurrentUser] = useState<{name: string, email: string, pin?: string} | null>(() => {
     const saved = localStorage.getItem('auction_user');
     if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {
-        return null;
-      }
+      try { return JSON.parse(saved); } catch { return null; }
     }
     return null;
   });
 
-    // Fetch bids from global backend
   const fetchBids = async () => {
     try {
       const res = await fetch(`${API_BASE}/api/bids`);
       const data = await res.json();
-      
-      // Convert timestamp strings to Date objects
-      const processedBids = (data.bids || []).map((b: any) => ({
+      const processed = (data.bids || []).map((b: any) => ({
         ...b,
         timestamp: new Date(b.timestamp)
       }));
-      
-      setBids(processedBids);
+      setBids(processed);
     } catch (err) {
       console.error("Failed to fetch bids", err);
     }
   };
-  
-    // Load bids from backend + poll every 2 seconds
+
   useEffect(() => {
     fetchBids();
     const interval = setInterval(fetchBids, 2000);
@@ -80,19 +66,21 @@ const Index = () => {
     }
   }, [currentUser]);
 
-  const [isLoginOpen, setIsLoginOpen] = useState<boolean>(false);
-  const [loginEmail, setLoginEmail] = useState<string>("");
-  const [loginPin, setLoginPin] = useState<string>("");
+  const [isLoginOpen, setIsLoginOpen] = useState(false);
+  const [loginEmail, setLoginEmail] = useState("");
+  const [loginPin, setLoginPin] = useState("");
 
-  const hasBid = currentUser ? bids.some(b => b.email?.toLowerCase() === currentUser.email.toLowerCase()) : false;
-  const [timeLeft, setTimeLeft] = useState<{ days: number; hours: number; minutes: number; seconds: number }>({ days: 0, hours: 0, minutes: 0, seconds: 0 });
-  const [isAuctionEnded, setIsAuctionEnded] = useState<boolean>(false);
-  const [isEditingMaxBid, setIsEditingMaxBid] = useState<boolean>(false);
-  const [editMaxBidAmount, setEditMaxBidAmount] = useState<string>("");
+  const hasBid = currentUser 
+    ? bids.some(b => b.email?.toLowerCase() === currentUser.email.toLowerCase()) 
+    : false;
+
+  const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+  const [isAuctionEnded, setIsAuctionEnded] = useState(false);
 
   const highestBid = bids.length > 0 ? Math.max(...bids.map(b => b.amount)) : 0;
   const minNextBid = highestBid + 500;
 
+  // Timer
   useEffect(() => {
     const calculateTimeLeft = () => {
       const now = new Date().getTime();
@@ -103,7 +91,6 @@ const Index = () => {
         setIsAuctionEnded(true);
         return true;
       }
-
       setTimeLeft({
         days: Math.floor(distance / (1000 * 60 * 60 * 24)),
         hours: Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
@@ -117,14 +104,49 @@ const Index = () => {
     if (ended) return;
 
     const timer = setInterval(() => {
-      const isEnded = calculateTimeLeft();
-      if (isEnded) clearInterval(timer);
+      if (calculateTimeLeft()) clearInterval(timer);
     }, 1000);
-
     return () => clearInterval(timer);
   }, []);
 
-           const handleBid = async (e: React.FormEvent) => {
+  // === GoHighLevel Tracking (outside handleBid) ===
+  const sendGHLTracking = (name: string, email: string, amount: number, pin: string) => {
+    const trackingPayload = {
+      type: "external_form_submission",
+      timestamp: Date.now(),
+      formId: "Auction Bid Form",
+      formData: {
+        first_name: name,
+        email: email,
+        "contact.security_pin": pin,
+        "contact.maximum_bid": amount,
+      },
+      formLabels: {
+        first_name: "Full Name",
+        email: "Email Address",
+        "contact.security_pin": "Security PIN",
+        "contact.maximum_bid": "Maximum Bid",
+      },
+      url: window.location.href,
+      title: document.title,
+      path: window.location.pathname,
+      userAgent: navigator.userAgent,
+      trackingId: "tk_84945ef98ad64c818d00ae3bcd173cfc",
+      locationId: "H71py0LtXYeIKk7smCSK",
+      sessionId: crypto.randomUUID(),
+      properties: {
+        deviceType: /Mobile|Android|iPhone/i.test(navigator.userAgent) ? "mobile" : "desktop",
+      },
+    };
+
+    fetch("https://backend.leadconnectorhq.com/external-tracking/events", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", version: "2021-07-28" },
+      body: JSON.stringify(trackingPayload),
+    }).catch(() => {});
+  };
+
+  const handleBid = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isAuctionEnded) {
       toast({ title: "Auction Ended", description: "Bidding is no longer allowed.", variant: "destructive" });
@@ -146,7 +168,6 @@ const Index = () => {
     }
 
     try {
-      // 1. Send to global backend
       const res = await fetch(`${API_BASE}/api/place-bid`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -164,95 +185,17 @@ const Index = () => {
       if (result.success) {
         setCurrentUser({ name, email, pin: currentUser?.pin || pin });
         setBidAmount("");
-
-        // 2. Send tracking to GoHighLevel (your original tracking)
-        const trackingPayload = {
-          type: "external_form_submission",
-          timestamp: Date.now(),
-          formId: "Auction Bid Form",
-          formData: {
-            first_name: name,
-            email: email,
-            "contact.security_pin": currentUser?.pin || pin,
-            "contact.maximum_bid": amount,
-          },
-          formLabels: {
-            first_name: "Full Name",
-            email: "Email Address",
-            "contact.security_pin": "Security PIN",
-            "contact.maximum_bid": "Maximum Bid",
-          },
-          url: window.location.href,
-          title: document.title,
-          path: window.location.pathname,
-          userAgent: navigator.userAgent,
-          trackingId: "tk_84945ef98ad64c818d00ae3bcd173cfc",
-          locationId: "H71py0LtXYeIKk7smCSK",
-          sessionId: crypto.randomUUID(),
-          properties: {
-            deviceType: /Mobile|Android|iPhone/i.test(navigator.userAgent) ? "mobile" : "desktop",
-          },
-        };
-
-        fetch("https://backend.leadconnectorhq.com/external-tracking/events", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            version: "2021-07-28",
-          },
-          body: JSON.stringify(trackingPayload),
-        }).catch(() => {});
+        await fetchBids();
+        sendGHLTracking(name, email, amount, currentUser?.pin || pin);
 
         toast({ 
           title: "Bid placed successfully!", 
-          description: `You are now the highest bidder at $${minNextBid.toLocaleString()}`,
+          description: `Auto-bidding active up to $${amount.toLocaleString()}`,
           className: "bg-primary text-primary-foreground border-none"
         });
       }
     } catch (err) {
       toast({ title: "Failed to place bid", variant: "destructive" });
-    }
-  };
-  
-    const handleUpdateMaxBid = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (isAuctionEnded || !bids[0]) {
-      toast({ title: "Error", description: "No active bid found.", variant: "destructive" });
-      return;
-    }
-
-    const amount = parseFloat(editMaxBidAmount.replace(/,/g, ''));
-    if (isNaN(amount) || amount <= bids[0].amount) {
-      toast({ title: "Invalid amount", description: "Max bid must be greater than your current bid.", variant: "destructive" });
-      return;
-    }
-
-    try {
-      const res = await fetch(`${API_BASE}/api/place-bid`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          amount: bids[0].amount,        // keep current bid amount
-          maxAmount: amount,             // update the ceiling
-          name: currentUser?.name || name,
-          email: currentUser?.email || email,
-          pin: currentUser?.pin
-        })
-      });
-
-      const result = await res.json();
-
-      if (result.success) {
-        await fetchBids();               // refresh the list from backend
-        setIsEditingMaxBid(false);
-        toast({ 
-          title: "Auto-bid updated", 
-          description: `Your maximum bid is now $${amount.toLocaleString()}`,
-          className: "bg-primary text-primary-foreground border-none"
-        });
-      }
-    } catch (err) {
-      toast({ title: "Failed to update auto-bid", variant: "destructive" });
     }
   };
 
@@ -262,27 +205,17 @@ const Index = () => {
     
     if (userBids.length > 0) {
       if (userBids[0].pin !== loginPin) {
-        toast({ title: "Incorrect PIN", description: "The security PIN you entered is incorrect.", variant: "destructive" });
+        toast({ title: "Incorrect PIN", variant: "destructive" });
         return;
       }
       const userName = userBids[0].name || loginEmail.split('@')[0];
       setCurrentUser({ name: userName, email: loginEmail, pin: loginPin });
       setName(userName);
       setEmail(loginEmail);
-      toast({ 
-        title: "Welcome back!", 
-        description: "We've restored your active bids.",
-        className: "bg-primary text-primary-foreground border-none"
-      });
+      toast({ title: "Welcome back!" });
       setIsLoginOpen(false);
-      setLoginEmail("");
-      setLoginPin("");
     } else {
-      toast({ 
-        title: "No bids found", 
-        description: "No bids found for this email. Please place a bid to create an account.",
-        variant: "destructive"
-      });
+      toast({ title: "No bids found", variant: "destructive" });
     }
   };
 
@@ -291,12 +224,12 @@ const Index = () => {
     setName("");
     setEmail("");
     setPin("");
-    toast({ title: "Signed out", description: "You have been securely signed out." });
+    toast({ title: "Signed out" });
   };
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-foreground font-sans selection:bg-[#c9a84c] selection:text-black flex flex-col relative overflow-hidden">
-      {/* Background Elements */}
+      {/* Background + Header (unchanged) */}
       <div className="absolute inset-0 z-0">
         <div className="absolute inset-0 bg-[#0a0a0a]/80 z-10" />
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#0a0a0a]/90 to-[#0a0a0a] z-10" />
@@ -309,11 +242,9 @@ const Index = () => {
         <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay z-20 pointer-events-none" />
       </div>
 
-      {/* Decorative Gold Glows */}
       <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] rounded-full bg-[#c9a84c] opacity-[0.07] blur-[150px] pointer-events-none z-10" />
       <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-[#f0d78c] opacity-[0.05] blur-[120px] pointer-events-none z-10" />
 
-      {/* Header */}
       <header className="border-b border-[#c9a84c]/20 bg-[#0a0a0a]/60 backdrop-blur-xl sticky top-0 z-50 relative">
         <div className="container mx-auto px-4 h-20 flex items-center justify-between">
           <div className="font-['Space_Grotesk'] font-bold text-lg sm:text-2xl text-transparent bg-clip-text bg-gradient-to-r from-white to-[#c9a84c] tracking-tighter flex items-center whitespace-nowrap">
@@ -342,30 +273,13 @@ const Index = () => {
                   <form onSubmit={handleLogin} className="space-y-4 pt-4">
                     <div className="space-y-2">
                       <label className="text-sm font-medium text-foreground">Email Address</label>
-                      <Input 
-                        type="email" 
-                        placeholder="you@example.com" 
-                        value={loginEmail}
-                        onChange={(e) => setLoginEmail(e.target.value)}
-                        className="bg-background/50 border-border focus-visible:ring-primary"
-                        required
-                      />
+                      <Input type="email" placeholder="you@example.com" value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} required />
                     </div>
                     <div className="space-y-2">
                       <label className="text-sm font-medium text-foreground">Security PIN</label>
-                      <Input 
-                        type="password" 
-                        placeholder="••••"
-                        maxLength={10}
-                        value={loginPin}
-                        onChange={(e) => setLoginPin(e.target.value)}
-                        className="bg-background/50 border-border focus-visible:ring-primary"
-                        required
-                      />
+                      <Input type="password" placeholder="••••" maxLength={10} value={loginPin} onChange={(e) => setLoginPin(e.target.value)} required />
                     </div>
-                    <Button type="submit" className="w-full bg-primary text-primary-foreground hover:bg-primary/90">
-                      Sign In
-                    </Button>
+                    <Button type="submit" className="w-full bg-primary text-primary-foreground hover:bg-primary/90">Sign In</Button>
                   </form>
                 </DialogContent>
               </Dialog>
@@ -375,11 +289,9 @@ const Index = () => {
       </header>
 
       <div className="container mx-auto px-4 py-12 lg:py-24 flex-1 relative z-20">
-        
-        {/* Asymmetric Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-start">
           
-          {/* Left Column: Domain Info (8 cols) */}
+          {/* Left Column (unchanged) */}
           <div className="lg:col-span-8 space-y-12 animate-in fade-in slide-in-from-bottom-8 duration-1000">
             <div className="space-y-8">
               <Badge variant="outline" className="border-[#c9a84c]/50 bg-[#c9a84c]/10 text-[#f0d78c] px-5 py-2 text-sm uppercase tracking-widest font-mono backdrop-blur-md shadow-[0_0_15px_rgba(201,168,76,0.2)]">
@@ -394,48 +306,28 @@ const Index = () => {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-10 border-t border-white/10">
+              {/* Feature cards - unchanged */}
               <div className="flex items-start space-x-5 bg-[#121212]/60 backdrop-blur-md border border-white/5 hover:border-[#c9a84c]/30 p-6 rounded-2xl transition-all duration-500 hover:shadow-[0_0_30px_-10px_rgba(201,168,76,0.2)] group">
-                <div className="bg-[#c9a84c]/10 p-4 rounded-xl group-hover:bg-[#c9a84c]/20 transition-colors">
-                  <Globe className="w-6 h-6 text-[#f0d78c]" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-white text-lg font-['Space_Grotesk']">Global Appeal</h3>
-                  <p className="text-zinc-400 text-sm mt-1.5 leading-relaxed">Short, memorable, and globally understood.</p>
-                </div>
+                <div className="bg-[#c9a84c]/10 p-4 rounded-xl group-hover:bg-[#c9a84c]/20 transition-colors"><Globe className="w-6 h-6 text-[#f0d78c]" /></div>
+                <div><h3 className="font-semibold text-white text-lg font-['Space_Grotesk']">Global Appeal</h3><p className="text-zinc-400 text-sm mt-1.5 leading-relaxed">Short, memorable, and globally understood.</p></div>
               </div>
               <div className="flex items-start space-x-5 bg-[#121212]/60 backdrop-blur-md border border-white/5 hover:border-[#c9a84c]/30 p-6 rounded-2xl transition-all duration-500 hover:shadow-[0_0_30px_-10px_rgba(201,168,76,0.2)] group">
-                <div className="bg-[#c9a84c]/10 p-4 rounded-xl group-hover:bg-[#c9a84c]/20 transition-colors">
-                  <ShieldCheck className="w-6 h-6 text-[#f0d78c]" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-white text-lg font-['Space_Grotesk']">Secure Transfer</h3>
-                  <p className="text-zinc-400 text-sm mt-1.5 leading-relaxed">Escrow.com integrated for guaranteed safe transaction.</p>
-                </div>
+                <div className="bg-[#c9a84c]/10 p-4 rounded-xl group-hover:bg-[#c9a84c]/20 transition-colors"><ShieldCheck className="w-6 h-6 text-[#f0d78c]" /></div>
+                <div><h3 className="font-semibold text-white text-lg font-['Space_Grotesk']">Secure Transfer</h3><p className="text-zinc-400 text-sm mt-1.5 leading-relaxed">Escrow.com integrated for guaranteed safe transaction.</p></div>
               </div>
               <div className="flex items-start space-x-5 bg-[#121212]/60 backdrop-blur-md border border-white/5 hover:border-[#c9a84c]/30 p-6 rounded-2xl transition-all duration-500 hover:shadow-[0_0_30px_-10px_rgba(201,168,76,0.2)] group">
-                <div className="bg-[#c9a84c]/10 p-4 rounded-xl group-hover:bg-[#c9a84c]/20 transition-colors">
-                  <TrendingUp className="w-6 h-6 text-[#f0d78c]" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-white text-lg font-['Space_Grotesk']">Exact Match</h3>
-                  <p className="text-zinc-400 text-sm mt-1.5 leading-relaxed">Highly searched keywords. Instantly recognizable for anyone looking to rent a Cybertruck in Vegas.</p>
-                </div>
+                <div className="bg-[#c9a84c]/10 p-4 rounded-xl group-hover:bg-[#c9a84c]/20 transition-colors"><TrendingUp className="w-6 h-6 text-[#f0d78c]" /></div>
+                <div><h3 className="font-semibold text-white text-lg font-['Space_Grotesk']">Exact Match</h3><p className="text-zinc-400 text-sm mt-1.5 leading-relaxed">Highly searched keywords. Instantly recognizable for anyone looking to rent a Cybertruck in Vegas.</p></div>
               </div>
               <div className="flex items-start space-x-5 bg-[#121212]/60 backdrop-blur-md border border-white/5 hover:border-[#c9a84c]/30 p-6 rounded-2xl transition-all duration-500 hover:shadow-[0_0_30px_-10px_rgba(201,168,76,0.2)] group">
-                <div className="bg-[#c9a84c]/10 p-4 rounded-xl group-hover:bg-[#c9a84c]/20 transition-colors">
-                  <Award className="w-6 h-6 text-[#f0d78c]" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-white text-lg font-['Space_Grotesk']">Brand Authority</h3>
-                  <p className="text-zinc-400 text-sm mt-1.5 leading-relaxed">Own the definitive digital presence for Tesla's most iconic vehicle in the entertainment capital.</p>
-                </div>
+                <div className="bg-[#c9a84c]/10 p-4 rounded-xl group-hover:bg-[#c9a84c]/20 transition-colors"><Award className="w-6 h-6 text-[#f0d78c]" /></div>
+                <div><h3 className="font-semibold text-white text-lg font-['Space_Grotesk']">Brand Authority</h3><p className="text-zinc-400 text-sm mt-1.5 leading-relaxed">Own the definitive digital presence for Tesla's most iconic vehicle in the entertainment capital.</p></div>
               </div>
             </div>
           </div>
 
-                    {/* Right Column: Auction Tool (4 cols) */}
+          {/* Right Column - Updated */}
           <div className="lg:col-span-4 relative animate-in fade-in slide-in-from-bottom-12 duration-1000 delay-200 fill-mode-both">
-            {/* Decorative background glow */}
             <div className="absolute -inset-0.5 bg-gradient-to-br from-[#c9a84c]/50 via-[#c9a84c]/10 to-transparent rounded-2xl blur-xl -z-10 opacity-70" />
             
             <Card className="bg-[#0f0f0f]/80 backdrop-blur-2xl border-[#c9a84c]/30 shadow-[0_20px_50px_-12px_rgba(0,0,0,0.8)] overflow-hidden relative">
@@ -474,17 +366,13 @@ const Index = () => {
                     <CheckCircle className="w-16 h-16 mx-auto text-[#c9a84c] mb-4" />
                     <h3 className="text-2xl font-bold text-white font-['Space_Grotesk']">Bid Placed!</h3>
                     <p className="text-muted-foreground">
-                      You are currently the highest bidder. We will contact you at <span className="text-white font-medium">{currentUser?.email || email}</span> if you win the auction.
+                      You are currently the highest bidder. We will contact you at <span className="text-white font-medium">{currentUser?.email}</span> if you win the auction.
                     </p>
                     <div className="mt-6 pt-6 border-t border-primary/20">
-                      {bids[0]?.maxAmount && bids[0].maxAmount > bids[0].amount ? (
-                        <div className="flex items-center justify-center space-x-2 text-primary bg-primary/10 border border-primary/20 py-2 px-4 rounded-full text-sm">
-                          <Bot className="w-4 h-4" />
-                          <span>Auto-bidding active up to <strong>${bids[0].maxAmount.toLocaleString()}</strong></span>
-                        </div>
-                      ) : (
-                        <div className="text-sm text-muted-foreground">Auto-bidding is currently disabled.</div>
-                      )}
+                      <div className="flex items-center justify-center space-x-2 text-primary bg-primary/10 border border-primary/20 py-2 px-4 rounded-full text-sm">
+                        <Bot className="w-4 h-4" />
+                        <span>Auto-bidding is active</span>
+                      </div>
                     </div>
                   </div>
                 ) : (
@@ -501,6 +389,7 @@ const Index = () => {
                       <div className="space-y-2">
                         <label className="text-sm font-medium text-foreground">Set Security PIN</label>
                         <Input type="password" placeholder="••••" maxLength={10} value={pin} onChange={(e) => setPin(e.target.value)} required />
+                        <p className="text-xs text-muted-foreground">You will need this PIN to log back in.</p>
                       </div>
                     )}
                     <div className="space-y-2">
@@ -517,6 +406,7 @@ const Index = () => {
                   </form>
                 )}
 
+                {/* Recent Bids - Privacy fixed */}
                 <div className="pt-8 border-t border-white/5">
                   <h4 className="text-sm font-bold uppercase tracking-wider flex items-center text-zinc-400 mb-5 font-mono">
                     <History className="w-4 h-4 mr-2 text-[#c9a84c]" /> Recent Bids
@@ -527,7 +417,7 @@ const Index = () => {
                       <div key={bid.id} className={`flex justify-between items-center p-4 rounded-xl transition-all ${i === 0 ? 'bg-[#c9a84c]/10 border border-[#c9a84c]/30 shadow-[0_0_15px_rgba(201,168,76,0.1)]' : 'bg-white/5 border border-transparent'}`}>
                         <div>
                           <p className="font-semibold text-sm text-white">
-                            {bid.email && currentUser?.email === bid.email ? "You" : `Bidder #${bids.indexOf(bid) + 1}`}
+                            {bid.email && currentUser?.email === bid.email ? "You" : `Bidder #${i + 1}`}
                           </p>
                           <p className="text-xs text-zinc-400 mt-0.5">
                             {new Date(bid.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -535,9 +425,6 @@ const Index = () => {
                         </div>
                         <div className="text-right">
                           <p className={`font-bold font-['Space_Grotesk'] text-lg ${i === 0 ? 'text-[#f0d78c]' : 'text-white'}`}>${bid.amount.toLocaleString()}</p>
-                          {bid.maxAmount && bid.maxAmount > bid.amount && (
-                            <p className="text-xs text-[#c9a84c]">Auto up to ${bid.maxAmount.toLocaleString()}</p>
-                          )}
                           {i === 0 && <span className="text-[10px] uppercase tracking-widest text-[#c9a84c] font-bold">Highest</span>}
                         </div>
                       </div>
