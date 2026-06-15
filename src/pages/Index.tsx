@@ -31,6 +31,7 @@ const Index = () => {
   const [name, setName] = useState<string>("");
   const [email, setEmail] = useState<string>("");
   const [pin, setPin] = useState<string>("");
+  const [editMaxBidAmount, setEditMaxBidAmount] = useState<string>("");   // ← Missing state added
 
   const [currentUser, setCurrentUser] = useState<{name: string, email: string, pin?: string} | null>(() => {
     const saved = localStorage.getItem('auction_user');
@@ -80,9 +81,7 @@ const Index = () => {
   const [isAuctionEnded, setIsAuctionEnded] = useState(false);
 
   const highestBid = bids.length > 0 ? Math.max(...bids.map(b => b.amount)) : 0;
-  const minNextBid = highestBid > 0 
-  ? highestBid + BID_INCREMENT 
-  : RESERVE_PRICE;
+  const minNextBid = highestBid > 0 ? highestBid + BID_INCREMENT : RESERVE_PRICE;
 
   // Timer
   useEffect(() => {
@@ -113,24 +112,14 @@ const Index = () => {
     return () => clearInterval(timer);
   }, []);
 
-  // === GoHighLevel Tracking (outside handleBid) ===
+  // GoHighLevel Tracking
   const sendGHLTracking = (name: string, email: string, amount: number, pin: string) => {
     const trackingPayload = {
       type: "external_form_submission",
       timestamp: Date.now(),
       formId: "Auction Bid Form",
-      formData: {
-        first_name: name,
-        email: email,
-        "contact.security_pin": pin,
-        "contact.maximum_bid": amount,
-      },
-      formLabels: {
-        first_name: "Full Name",
-        email: "Email Address",
-        "contact.security_pin": "Security PIN",
-        "contact.maximum_bid": "Maximum Bid",
-      },
+      formData: { first_name: name, email, "contact.security_pin": pin, "contact.maximum_bid": amount },
+      formLabels: { first_name: "Full Name", email: "Email Address", "contact.security_pin": "Security PIN", "contact.maximum_bid": "Maximum Bid" },
       url: window.location.href,
       title: document.title,
       path: window.location.pathname,
@@ -138,9 +127,7 @@ const Index = () => {
       trackingId: "tk_84945ef98ad64c818d00ae3bcd173cfc",
       locationId: "H71py0LtXYeIKk7smCSK",
       sessionId: crypto.randomUUID(),
-      properties: {
-        deviceType: /Mobile|Android|iPhone/i.test(navigator.userAgent) ? "mobile" : "desktop",
-      },
+      properties: { deviceType: /Mobile|Android|iPhone/i.test(navigator.userAgent) ? "mobile" : "desktop" },
     };
 
     fetch("https://backend.leadconnectorhq.com/external-tracking/events", {
@@ -165,7 +152,45 @@ const Index = () => {
       return;
     }
 
-      const handleUpdateMaxBid = async (e: React.FormEvent) => {
+    const amount = parseFloat(bidAmount.replace(/,/g, ''));
+    if (isNaN(amount) || amount < minNextBid) {
+      toast({ title: "Bid too low", description: `Minimum next bid is $${minNextBid.toLocaleString()}`, variant: "destructive" });
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API_BASE}/api/place-bid`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          amount: minNextBid, 
+          maxAmount: amount,
+          name, 
+          email, 
+          pin: currentUser?.pin || pin 
+        })
+      });
+
+      const result = await res.json();
+
+      if (result.success) {
+        setCurrentUser({ name, email, pin: currentUser?.pin || pin });
+        setBidAmount("");
+        await fetchBids();
+        sendGHLTracking(name, email, amount, currentUser?.pin || pin);
+
+        toast({ 
+          title: "Bid placed successfully!", 
+          description: `Auto-bidding active up to $${amount.toLocaleString()}`,
+          className: "bg-primary text-primary-foreground border-none"
+        });
+      }
+    } catch (err) {
+      toast({ title: "Failed to place bid", variant: "destructive" });
+    }
+  };
+
+  const handleUpdateMaxBid = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isAuctionEnded || !currentUser) {
       toast({ title: "Error", description: "Please sign in to update your max bid.", variant: "destructive" });
