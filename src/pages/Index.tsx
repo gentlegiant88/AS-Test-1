@@ -165,9 +165,16 @@ const Index = () => {
       return;
     }
 
-    const amount = parseFloat(bidAmount.replace(/,/g, ''));
-    if (isNaN(amount) || amount < minNextBid) {
-      toast({ title: "Bid too low", description: `Minimum next bid is $${minNextBid.toLocaleString()}`, variant: "destructive" });
+      const handleUpdateMaxBid = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (isAuctionEnded || !currentUser) {
+      toast({ title: "Error", description: "Please sign in to update your max bid.", variant: "destructive" });
+      return;
+    }
+
+    const amount = parseFloat(editMaxBidAmount.replace(/,/g, ''));
+    if (isNaN(amount) || amount <= highestBid) {
+      toast({ title: "Invalid amount", description: `Max bid must be higher than current highest bid ($${highestBid.toLocaleString()})`, variant: "destructive" });
       return;
     }
 
@@ -176,30 +183,27 @@ const Index = () => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
-          amount: minNextBid, 
+          amount: highestBid, 
           maxAmount: amount,
-          name, 
-          email, 
-          pin: currentUser?.pin || pin 
+          name: currentUser.name,
+          email: currentUser.email,
+          pin: currentUser.pin
         })
       });
 
       const result = await res.json();
 
       if (result.success) {
-        setCurrentUser({ name, email, pin: currentUser?.pin || pin });
-        setBidAmount("");
         await fetchBids();
-        sendGHLTracking(name, email, amount, currentUser?.pin || pin);
-
+        setEditMaxBidAmount("");
         toast({ 
-          title: "Bid placed successfully!", 
-          description: `Auto-bidding active up to $${amount.toLocaleString()}`,
+          title: "Max Bid Updated", 
+          description: `Your new maximum bid is now $${amount.toLocaleString()}`,
           className: "bg-primary text-primary-foreground border-none"
         });
       }
     } catch (err) {
-      toast({ title: "Failed to place bid", variant: "destructive" });
+      toast({ title: "Failed to update max bid", variant: "destructive" });
     }
   };
 
@@ -330,7 +334,7 @@ const Index = () => {
             </div>
           </div>
 
-          {/* Right Column - Updated */}
+                             {/* Right Column: Auction Tool */}
           <div className="lg:col-span-4 relative animate-in fade-in slide-in-from-bottom-12 duration-1000 delay-200 fill-mode-both">
             <div className="absolute -inset-0.5 bg-gradient-to-br from-[#c9a84c]/50 via-[#c9a84c]/10 to-transparent rounded-2xl blur-xl -z-10 opacity-70" />
             
@@ -349,9 +353,9 @@ const Index = () => {
                   ${highestBid.toLocaleString()}
                 </CardTitle>
                 {highestBid >= RESERVE_PRICE && (
-                <p className="text-sm text-[#c9a84c] mt-3 font-medium flex items-center">
-                  <ShieldCheck className="w-4 h-4 mr-1.5" /> Reserve price met. Domain will be sold.
-                </p>
+                  <p className="text-sm text-[#c9a84c] mt-3 font-medium flex items-center">
+                    <ShieldCheck className="w-4 h-4 mr-1.5" /> Reserve price met. Domain will be sold.
+                  </p>
                 )}
               </CardHeader>
               
@@ -360,29 +364,42 @@ const Index = () => {
                   <div className="bg-[#1a1a1a] border border-[#c9a84c]/30 rounded-xl p-8 text-center space-y-4 shadow-[0_0_30px_rgba(201,168,76,0.1)]">
                     <Award className="w-16 h-16 mx-auto text-[#c9a84c] mb-4" />
                     <h3 className="text-2xl font-bold text-white font-['Space_Grotesk']">Auction Concluded</h3>
-                    {bids.length > 0 && (
-                      <div className="space-y-2">
-                        <p className="text-muted-foreground">The winning bid was</p>
-                        <p className="text-4xl font-bold text-[#f0d78c]">${highestBid.toLocaleString()}</p>
-                      </div>
-                    )}
                   </div>
                 ) : hasBid ? (
                   <div className="bg-primary/10 border border-primary/20 rounded-xl p-8 text-center space-y-4">
                     <CheckCircle className="w-16 h-16 mx-auto text-[#c9a84c] mb-4" />
                     <h3 className="text-2xl font-bold text-white font-['Space_Grotesk']">Bid Placed!</h3>
                     <p className="text-muted-foreground">
-                      You are currently the highest bidder. We will contact you at <span className="text-white font-medium">{currentUser?.email}</span> if you win the auction.
+                      {bids[0]?.email?.toLowerCase() === currentUser?.email?.toLowerCase() 
+                        ? "You are currently the highest bidder." 
+                        : "You are in the running."}
                     </p>
+                    <p className="text-sm text-white">We will contact you at <span className="font-medium">{currentUser?.email}</span> if you win.</p>
+
+                    {/* Update Max Bid */}
                     <div className="mt-6 pt-6 border-t border-primary/20">
-                      <div className="flex items-center justify-center space-x-2 text-primary bg-primary/10 border border-primary/20 py-2 px-4 rounded-full text-sm">
-                        <Bot className="w-4 h-4" />
-                        <span>Auto-bidding is active</span>
-                      </div>
+                      <form onSubmit={handleUpdateMaxBid} className="space-y-4">
+                        <label className="text-sm font-medium text-foreground block">Update Your Maximum Bid</label>
+                        <div className="relative">
+                          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground font-medium">$</span>
+                          <Input 
+                            type="number" 
+                            value={editMaxBidAmount}
+                            onChange={(e) => setEditMaxBidAmount(e.target.value)}
+                            className="pl-8 bg-background/50 border-border focus-visible:ring-primary"
+                            min={highestBid + 100}
+                            step="100"
+                            placeholder="New max bid"
+                            required
+                          />
+                        </div>
+                        <Button type="submit" className="w-full">Update Max Bid</Button>
+                      </form>
                     </div>
                   </div>
                 ) : (
                   <form onSubmit={handleBid} className="space-y-4">
+                    {/* Your bidding form remains here */}
                     <div className="space-y-2">
                       <label className="text-sm font-medium text-foreground">Full Name</label>
                       <Input type="text" placeholder="John Doe" value={name} onChange={(e) => setName(e.target.value)} required />
@@ -395,7 +412,6 @@ const Index = () => {
                       <div className="space-y-2">
                         <label className="text-sm font-medium text-foreground">Set Security PIN</label>
                         <Input type="password" placeholder="••••" maxLength={10} value={pin} onChange={(e) => setPin(e.target.value)} required />
-                        <p className="text-xs text-muted-foreground">You will need this PIN to log back in.</p>
                       </div>
                     )}
                     <div className="space-y-2">
@@ -412,29 +428,38 @@ const Index = () => {
                   </form>
                 )}
 
-                {/* Recent Bids - Privacy fixed */}
+                {/* Recent Bids - Sorted by amount descending */}
                 <div className="pt-8 border-t border-white/5">
                   <h4 className="text-sm font-bold uppercase tracking-wider flex items-center text-zinc-400 mb-5 font-mono">
                     <History className="w-4 h-4 mr-2 text-[#c9a84c]" /> Recent Bids
                   </h4>
                   <div className="space-y-3">
                     {bids.length === 0 && <p className="text-sm text-zinc-500 italic py-4">No bids placed yet. Be the first!</p>}
-                    {bids.slice(0, 5).map((bid, i) => (
-                      <div key={bid.id} className={`flex justify-between items-center p-4 rounded-xl transition-all ${i === 0 ? 'bg-[#c9a84c]/10 border border-[#c9a84c]/30 shadow-[0_0_15px_rgba(201,168,76,0.1)]' : 'bg-white/5 border border-transparent'}`}>
-                        <div>
-                          <p className="font-semibold text-sm text-white">
-                            {bid.email && currentUser?.email === bid.email ? "You" : `Bidder #${i + 1}`}
-                          </p>
-                          <p className="text-xs text-zinc-400 mt-0.5">
-                            {new Date(bid.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          <p className={`font-bold font-['Space_Grotesk'] text-lg ${i === 0 ? 'text-[#f0d78c]' : 'text-white'}`}>${bid.amount.toLocaleString()}</p>
-                          {i === 0 && <span className="text-[10px] uppercase tracking-widest text-[#c9a84c] font-bold">Highest</span>}
-                        </div>
-                      </div>
-                    ))}
+                    {bids
+                      .slice(0, 5)
+                      .sort((a, b) => b.amount - a.amount)   // Sort highest first
+                      .map((bid, i) => {
+                        const isYou = bid.email && currentUser?.email === bid.email;
+                        const isHighest = i === 0;
+                        return (
+                          <div key={bid.id} className={`flex justify-between items-center p-4 rounded-xl transition-all ${isHighest ? 'bg-[#c9a84c]/10 border border-[#c9a84c]/30 shadow-[0_0_15px_rgba(201,168,76,0.1)]' : 'bg-white/5 border border-transparent'}`}>
+                            <div>
+                              <p className="font-semibold text-sm text-white">
+                                {isYou ? "You" : `Bidder #${i + 1}`}
+                              </p>
+                              <p className="text-xs text-zinc-400 mt-0.5">
+                                {new Date(bid.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              </p>
+                            </div>
+                            <div className="text-right">
+                              <p className={`font-bold font-['Space_Grotesk'] text-lg ${isHighest ? 'text-[#f0d78c]' : 'text-white'}`}>
+                                ${bid.amount.toLocaleString()}
+                              </p>
+                              {isHighest && <span className="text-[10px] uppercase tracking-widest text-[#c9a84c] font-bold">HIGHEST</span>}
+                            </div>
+                          </div>
+                        );
+                      })}
                   </div>
                 </div>
               </CardContent>
