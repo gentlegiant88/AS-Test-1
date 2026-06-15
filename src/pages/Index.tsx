@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Clock, TrendingUp, ShieldCheck, Globe, History, ArrowRight, Activity, Award, CheckCircle, Bot, LogIn, LogOut, Lock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
+const API_BASE = "https://auction-backend.daniel-hendricks1337.workers.dev";
 const DOMAIN_NAME = "lasvegascybertruck.com";
 const AUCTION_END_DATE = new Date("2026-06-15T00:00:00-07:00"); // Midnight Pacific Time (end of June 14th)
 
@@ -23,22 +24,12 @@ interface Bid {
   timestamp: Date;
 }
 
-const INITIAL_BIDS: Bid[] = [];
-
 const Index = () => {
   const { toast } = useToast();
-  const [bids, setBids] = useState<Bid[]>(() => {
-    const saved = localStorage.getItem('auction_bids');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        return parsed.map((b: any) => ({ ...b, timestamp: new Date(b.timestamp) }));
-      } catch (e) {
-        return INITIAL_BIDS;
-      }
-    }
-    return INITIAL_BIDS;
-  });
+
+  // Global bids from backend
+  const [bids, setBids] = useState<Bid[]>([]);
+
   const [bidAmount, setBidAmount] = useState<string>("");
   const [name, setName] = useState<string>("");
   const [email, setEmail] = useState<string>("");
@@ -56,9 +47,23 @@ const Index = () => {
     return null;
   });
 
+  // Fetch bids from global backend
+  const fetchBids = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/api/bids`);
+      const data = await res.json();
+      setBids(data.bids || []);
+    } catch (err) {
+      console.error("Failed to fetch bids", err);
+    }
+  };
+  
+    // Load bids from backend + poll every 2 seconds
   useEffect(() => {
-    localStorage.setItem('auction_bids', JSON.stringify(bids));
-  }, [bids]);
+    fetchBids();
+    const interval = setInterval(fetchBids, 2000);
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     if (currentUser) {
@@ -112,95 +117,105 @@ const Index = () => {
     return () => clearInterval(timer);
   }, []);
 
-  const handleBid = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (isAuctionEnded) {
-      toast({ title: "Auction Ended", description: "Bidding is no longer allowed.", variant: "destructive" });
-      return;
-    }
-    if (!name) {
-      toast({ title: "Name required", description: "Please enter your full name to place a bid.", variant: "destructive" });
-      return;
-    }
-    if (!email) {
-      toast({ title: "Email required", description: "Please enter your email to place a bid.", variant: "destructive" });
-      return;
-    }
-    if (!currentUser && !pin) {
-      toast({ title: "PIN required", description: "Please set a security PIN to protect your bid.", variant: "destructive" });
-      return;
-    }
-    const amount = parseFloat(bidAmount.replace(/,/g, ''));
-    
-    if (isNaN(amount)) {
-      toast({ title: "Invalid amount", description: "Please enter a valid number.", variant: "destructive" });
-      return;
-    }
-    
-    if (amount < minNextBid) {
-      toast({ title: "Bid too low", description: `Minimum next bid is $${minNextBid.toLocaleString()}`, variant: "destructive" });
-      return;
-    }
+         const handleBid = async (e: React.FormEvent) => {
+ e.preventDefault();
+ if (isAuctionEnded) {
+ toast({ title: "Auction Ended", description: "Bidding is no longer allowed.", variant: "destructive" });
+ return;
+ }
+ if (!name) {
+ toast({ title: "Name required", description: "Please enter your full name to place a bid.", variant: "destructive" });
+ return;
+ }
+ if (!email) {
+ toast({ title: "Email required", description: "Please enter your email to place a bid.", variant: "destructive" });
+ return;
+ }
+ if (!currentUser && !pin) {
+ toast({ title: "PIN required", description: "Please set a security PIN to protect your bid.", variant: "destructive" });
+ return;
+ }
 
-    const newBid: Bid = {
-      id: Math.random().toString(36).substring(7),
-      amount: minNextBid,
-      bidder: `Bidder #${bids.length + 1} (You)`,
-      name,
-      email,
-      pin: currentUser?.pin || pin,
-      isAutoBid: amount > minNextBid,
-      maxAmount: amount,
-      timestamp: new Date()
-    };
+ const amount = parseFloat(bidAmount.replace(/,/g, ''));
+ 
+ if (isNaN(amount)) {
+ toast({ title: "Invalid amount", description: "Please enter a valid number.", variant: "destructive" });
+ return;
+ }
+ 
+ if (amount < minNextBid) {
+ toast({ title: "Bid too low", description: `Minimum next bid is $${minNextBid.toLocaleString()}`, variant: "destructive" });
+ return;
+ }
 
-    setBids([newBid, ...bids]);
-    setCurrentUser({ name, email, pin: currentUser?.pin || pin });
+ try {
+ // Send bid to global backend
+ const res = await fetch(`${API_BASE}/api/place-bid`, {
+ method: "POST",
+ headers: { "Content-Type": "application/json" },
+ body: JSON.stringify({ 
+ amount: minNextBid, 
+ name, 
+ email, 
+ pin: currentUser?.pin || pin 
+ })
+ });
 
-    const trackingPayload = {
-      type: "external_form_submission",
-      timestamp: Date.now(),
-      formId: "Auction Bid Form",
-      formData: {
-        first_name: name,
-        email: email,
-        "contact.security_pin": currentUser?.pin || pin,
-        "contact.maximum_bid": amount,
-      },
-      formLabels: {
-        first_name: "Full Name",
-        email: "Email Address",
-        "contact.security_pin": "Security PIN",
-        "contact.maximum_bid": "Maximum Bid",
-      },
-      url: window.location.href,
-      title: document.title,
-      path: window.location.pathname,
-      userAgent: navigator.userAgent,
-      trackingId: "tk_84945ef98ad64c818d00ae3bcd173cfc",
-      locationId: "H71py0LtXYeIKk7smCSK",
-      sessionId: crypto.randomUUID(),
-      properties: {
-        deviceType: /Mobile|Android|iPhone/i.test(navigator.userAgent) ? "mobile" : "desktop",
-      },
-    };
+ const result = await res.json();
 
-    fetch("https://backend.leadconnectorhq.com/external-tracking/events", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        version: "2021-07-28",
-      },
-      body: JSON.stringify(trackingPayload),
-    }).catch(() => {});
+ if (result.success) {
+ setCurrentUser({ name, email, pin: currentUser?.pin || pin });
+ setBidAmount("");
 
-    toast({ 
-      title: "Bid placed successfully!", 
-      description: amount > minNextBid ? `You are now the highest bidder at $${minNextBid.toLocaleString()}. Auto-bid active up to $${amount.toLocaleString()}.` : `You are now the highest bidder at $${minNextBid.toLocaleString()}`,
-      className: "bg-primary text-primary-foreground border-none"
-    });
-  };
+ // Send tracking to GoHighLevel
+ const trackingPayload = {
+ type: "external_form_submission",
+ timestamp: Date.now(),
+ formId: "Auction Bid Form",
+ formData: {
+ first_name: name,
+ email: email,
+ "contact.security_pin": currentUser?.pin || pin,
+ "contact.maximum_bid": amount,
+ },
+ formLabels: {
+ first_name: "Full Name",
+ email: "Email Address",
+ "contact.security_pin": "Security PIN",
+ "contact.maximum_bid": "Maximum Bid",
+ },
+ url: window.location.href,
+ title: document.title,
+ path: window.location.pathname,
+ userAgent: navigator.userAgent,
+ trackingId: "tk_84945ef98ad64c818d00ae3bcd173cfc ",
+ locationId: "H71py0LtXYeIKk7smCSK",
+ sessionId: crypto.randomUUID(),
+ properties: {
+ deviceType: /Mobile|Android|iPhone/i.test(navigator.userAgent) ? "mobile" : "desktop",
+ },
+ };
 
+ fetch("https://backend.leadconnectorhq.com/external-tracking/events", {
+ method: "POST",
+ headers: {
+ "Content-Type": "application/json",
+ version: "2021-07-28",
+ },
+ body: JSON.stringify(trackingPayload),
+ }).catch(() => {});
+
+ toast({ 
+ title: "Bid placed successfully!", 
+ description: `You are now the highest bidder at $${minNextBid.toLocaleString()}`,
+ className: "bg-primary text-primary-foreground border-none"
+ });
+ }
+ } catch (err) {
+ toast({ title: "Failed to place bid", variant: "destructive" });
+ }
+ };
+  
   const handleUpdateMaxBid = (e: React.FormEvent) => {
     e.preventDefault();
     if (isAuctionEnded) {
@@ -583,8 +598,10 @@ const Index = () => {
                       <div key={bid.id} className={`flex justify-between items-center p-4 rounded-xl transition-all ${i === 0 ? 'bg-[#c9a84c]/10 border border-[#c9a84c]/30 shadow-[0_0_15px_rgba(201,168,76,0.1)]' : 'bg-white/5 border border-transparent'}`}>
                         <div>
                           <p className="font-semibold text-sm text-white">
-                            {bid.email && currentUser?.email === bid.email ? "You" : bid.bidder}
-                          </p>
+                            {bid.email && currentUser?.email === bid.email 
+                              ? "You" 
+                              : `Bidder #${bids.indexOf(bid) + 1}`}
+                            </p>
                           <p className="text-xs text-zinc-400 mt-0.5">
                             {bid.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                           </p>
