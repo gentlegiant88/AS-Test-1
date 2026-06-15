@@ -223,32 +223,46 @@ const Index = () => {
  }
  };
   
-  const handleUpdateMaxBid = (e: React.FormEvent) => {
+    const handleUpdateMaxBid = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (isAuctionEnded) {
-      toast({ title: "Auction Ended", description: "Bidding is no longer allowed.", variant: "destructive" });
+    if (isAuctionEnded || !bids[0]) {
+      toast({ title: "Error", description: "No active bid found.", variant: "destructive" });
       return;
     }
+
     const amount = parseFloat(editMaxBidAmount.replace(/,/g, ''));
     if (isNaN(amount) || amount <= bids[0].amount) {
       toast({ title: "Invalid amount", description: "Max bid must be greater than your current bid.", variant: "destructive" });
       return;
     }
-    
-    const updatedBids = [...bids];
-    updatedBids[0] = {
-      ...updatedBids[0],
-      isAutoBid: true,
-      maxAmount: amount
-    };
-    setBids(updatedBids);
 
-    setIsEditingMaxBid(false);
-    toast({ 
-      title: "Auto-bid updated", 
-      description: `Your maximum bid is now $${amount.toLocaleString()}`,
-      className: "bg-primary text-primary-foreground border-none"
-    });
+    try {
+      const res = await fetch(`${API_BASE}/api/place-bid`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          amount: bids[0].amount,        // keep current bid amount
+          maxAmount: amount,             // update the ceiling
+          name: currentUser?.name || name,
+          email: currentUser?.email || email,
+          pin: currentUser?.pin
+        })
+      });
+
+      const result = await res.json();
+
+      if (result.success) {
+        await fetchBids();               // refresh the list from backend
+        setIsEditingMaxBid(false);
+        toast({ 
+          title: "Auto-bid updated", 
+          description: `Your maximum bid is now $${amount.toLocaleString()}`,
+          className: "bg-primary text-primary-foreground border-none"
+        });
+      }
+    } catch (err) {
+      toast({ title: "Failed to update auto-bid", variant: "destructive" });
+    }
   };
 
   const handleLogin = (e: React.FormEvent) => {
