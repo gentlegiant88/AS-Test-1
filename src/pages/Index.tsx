@@ -10,7 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 
 const API_BASE = "https://auction-backend.daniel-hendricks1337.workers.dev";
 const DOMAIN_NAME = "lasvegascybertruck.com";
-const AUCTION_END_DATE = new Date("2026-06-15T00:00:00-07:00"); // Midnight Pacific Time (end of June 14th)
+const AUCTION_END_DATE = new Date("2026-06-16T00:00:00-07:00"); // Midnight Pacific Time (end of June 14th)
 
 interface Bid {
   id: string;
