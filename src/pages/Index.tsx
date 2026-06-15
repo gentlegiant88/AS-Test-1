@@ -385,7 +385,7 @@ const Index = () => {
               </CardHeader>
               
               <CardContent className="p-6 lg:p-8 space-y-8">
-                                {isAuctionEnded ? (
+                             {isAuctionEnded ? (
                   <div className="bg-[#1a1a1a] border border-[#c9a84c]/30 rounded-xl p-8 text-center space-y-4 shadow-[0_0_30px_rgba(201,168,76,0.1)]">
                     <Award className="w-16 h-16 mx-auto text-[#c9a84c] mb-4" />
                     <h3 className="text-2xl font-bold text-white font-['Space_Grotesk']">Auction Concluded</h3>
@@ -420,7 +420,7 @@ const Index = () => {
                       </form>
                     </div>
                   </div>
-                ) : hasBid ? (
+                ) : currentUser ? (   // Changed from hasBid
                   <div className="bg-primary/10 border border-primary/20 rounded-xl p-8 text-center space-y-4">
                     <CheckCircle className="w-16 h-16 mx-auto text-[#c9a84c] mb-4" />
                     <h3 className="text-2xl font-bold text-white font-['Space_Grotesk']">Bid Placed!</h3>
@@ -475,7 +475,7 @@ const Index = () => {
                       <p className="text-xs text-muted-foreground text-right">Enter ${minNextBid.toLocaleString()} or more.</p>
                     </div>
                     <Button type="submit" size="lg" className="w-full h-14 text-lg font-bold bg-gradient-to-r from-[#c9a84c] to-[#a68635] hover:from-[#f0d78c] hover:to-[#c9a84c] text-black shadow-[0_0_20px_rgba(201,168,76,0.3)] transition-all duration-300">
-                      Place Premium Bid <ArrowRight className="ml-2 w-5 h-5" />
+                      Place Max Bid <ArrowRight className="ml-2 w-5 h-5" />
                     </Button>
                   </form>
                 )}
