@@ -47,12 +47,19 @@ const Index = () => {
     return null;
   });
 
-  // Fetch bids from global backend
+    // Fetch bids from global backend
   const fetchBids = async () => {
     try {
       const res = await fetch(`${API_BASE}/api/bids`);
       const data = await res.json();
-      setBids(data.bids || []);
+      
+      // Convert timestamp strings to Date objects
+      const processedBids = (data.bids || []).map((b: any) => ({
+        ...b,
+        timestamp: new Date(b.timestamp)
+      }));
+      
+      setBids(processedBids);
     } catch (err) {
       console.error("Failed to fetch bids", err);
     }
@@ -603,7 +610,7 @@ const Index = () => {
                               : `Bidder #${bids.indexOf(bid) + 1}`}
                             </p>
                           <p className="text-xs text-zinc-400 mt-0.5">
-                            {bid.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            { new Date(bid.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }
                           </p>
                         </div>
                         <div className="text-right">
