@@ -10,6 +10,8 @@ import { useToast } from "@/hooks/use-toast";
 const API_BASE = "https://auction-backend.daniel-hendricks1337.workers.dev";
 const DOMAIN_NAME = "lasvegascybertruck.com";
 const AUCTION_END_DATE = new Date("2026-06-16T00:00:00-07:00");
+const RESERVE_PRICE = 1000;
+const BID_INCREMENT = 100;
 
 interface Bid {
   id: string;
@@ -78,7 +80,9 @@ const Index = () => {
   const [isAuctionEnded, setIsAuctionEnded] = useState(false);
 
   const highestBid = bids.length > 0 ? Math.max(...bids.map(b => b.amount)) : 0;
-  const minNextBid = highestBid + 500;
+  const minNextBid = highestBid > 0 
+  ? highestBid + BID_INCREMENT 
+  : RESERVE_PRICE;
 
   // Timer
   useEffect(() => {
@@ -344,9 +348,11 @@ const Index = () => {
                 <CardTitle className="text-6xl font-bold font-['Space_Grotesk'] text-white tracking-tight">
                   ${highestBid.toLocaleString()}
                 </CardTitle>
+                {highestBid >= RESERVE_PRICE && (
                 <p className="text-sm text-[#c9a84c] mt-3 font-medium flex items-center">
                   <ShieldCheck className="w-4 h-4 mr-1.5" /> Reserve price met. Domain will be sold.
                 </p>
+                )}
               </CardHeader>
               
               <CardContent className="p-6 lg:p-8 space-y-8">
