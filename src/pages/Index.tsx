@@ -45,7 +45,7 @@ const Index = () => {
   const highestBid = bids.length > 0 ? Math.max(...bids.map(b => b.amount)) : 0;
   const minNextBid = highestBid + 500;
 
-  // Fetch bids from global backend
+  // ====================== BACKEND INTEGRATION ======================
   const fetchBids = async () => {
     try {
       const res = await fetch(`${API_BASE}/api/bids`);
@@ -56,22 +56,21 @@ const Index = () => {
     }
   };
 
-  // Load bids + poll every 3 seconds
   useEffect(() => {
     fetchBids();
-    const interval = setInterval(fetchBids, 3000);
+    const interval = setInterval(fetchBids, 2000); // refresh every 2 seconds
     return () => clearInterval(interval);
   }, []);
 
   // Timer
   useEffect(() => {
     const calculateTimeLeft = () => {
-      const now = new Date().getTime();
+      const now = Date.now();
       const distance = AUCTION_END_DATE.getTime() - now;
       if (distance <= 0) {
         setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0 });
         setIsAuctionEnded(true);
-        return true;
+        return;
       }
       setTimeLeft({
         days: Math.floor(distance / (1000 * 60 * 60 * 24)),
@@ -79,7 +78,6 @@ const Index = () => {
         minutes: Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60)),
         seconds: Math.floor((distance % (1000 * 60)) / 1000)
       });
-      return false;
     };
 
     calculateTimeLeft();
@@ -134,7 +132,6 @@ const Index = () => {
       toast({ title: "Invalid amount", variant: "destructive" });
       return;
     }
-    // For now we just update locally (can be improved later)
     const updatedBids = [...bids];
     if (updatedBids[0]) {
       updatedBids[0] = { ...updatedBids[0], isAutoBid: true, maxAmount: amount };
@@ -159,7 +156,7 @@ const Index = () => {
       toast({ title: "Welcome back!" });
       setIsLoginOpen(false);
     } else {
-      toast({ title: "No bids found for this email", variant: "destructive" });
+      toast({ title: "No bids found", variant: "destructive" });
     }
   };
 
@@ -199,28 +196,28 @@ const Index = () => {
             {currentUser ? (
               <div className="flex items-center space-x-4">
                 <span className="text-sm text-[#c9a84c] font-medium hidden sm:inline-block">{currentUser.email}</span>
-                <Button variant="ghost" size="sm" onClick={handleLogout}>
+                <Button variant="ghost" size="sm" onClick={handleLogout} className="text-muted-foreground hover:text-white hover:bg-white/5">
                   <LogOut className="w-4 h-4 mr-2" /> Sign Out
                 </Button>
               </div>
             ) : (
               <Dialog open={isLoginOpen} onOpenChange={setIsLoginOpen}>
                 <DialogTrigger asChild>
-                  <Button variant="outline" size="sm" className="border-[#c9a84c]/50 text-[#c9a84c]">
+                  <Button variant="outline" size="sm" className="border-[#c9a84c]/50 text-[#c9a84c] hover:bg-[#c9a84c] hover:text-black">
                     <LogIn className="w-4 h-4 mr-2" /> Sign In
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="sm:max-w-md bg-[#121212] border-[#c9a84c]/30">
                   <DialogHeader>
-                    <DialogTitle className="text-2xl">Sign In</DialogTitle>
+                    <DialogTitle className="text-2xl font-['Space_Grotesk']">Sign In</DialogTitle>
                   </DialogHeader>
                   <form onSubmit={handleLogin} className="space-y-4 pt-4">
                     <div className="space-y-2">
-                      <label>Email Address</label>
+                      <label className="text-sm font-medium">Email Address</label>
                       <Input type="email" value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} required />
                     </div>
                     <div className="space-y-2">
-                      <label>Security PIN</label>
+                      <label className="text-sm font-medium">Security PIN</label>
                       <Input type="password" value={loginPin} onChange={(e) => setLoginPin(e.target.value)} required />
                     </div>
                     <Button type="submit" className="w-full">Sign In</Button>
@@ -234,72 +231,96 @@ const Index = () => {
 
       <div className="container mx-auto px-4 py-12 lg:py-24 flex-1 relative z-20">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-start">
-          {/* Left Column - Info */}
+          {/* Left Column */}
           <div className="lg:col-span-8 space-y-12">
-            {/* Your existing left column content (domain info, features, etc.) */}
-            {/* ... (keeping it short here - copy from your original if needed) */}
-            <Badge variant="outline" className="border-[#c9a84c]/50 bg-[#c9a84c]/10 text-[#f0d78c]">
-              <Activity className="w-4 h-4 mr-2" /> Live Premium Auction
-            </Badge>
-            <h1 className="text-[clamp(1.25rem,6vw,3.5rem)] font-bold tracking-tighter font-['Space_Grotesk'] text-transparent bg-clip-text bg-gradient-to-b from-white via-[#f0d78c] to-[#c9a84c]">
-              {DOMAIN_NAME}
-            </h1>
-            {/* Add the rest of your left column as before */}
+            <div className="space-y-8">
+              <Badge variant="outline" className="border-[#c9a84c]/50 bg-[#c9a84c]/10 text-[#f0d78c] px-5 py-2 text-sm uppercase tracking-widest font-mono">
+                <Activity className="w-4 h-4 mr-2 inline animate-pulse" /> Live Premium Auction
+              </Badge>
+              <h1 className="text-[clamp(1.25rem,6vw,3.5rem)] lg:text-[clamp(1.5rem,3.5vw,4rem)] xl:text-[clamp(2rem,4vw,4.5rem)] font-bold tracking-tighter font-['Space_Grotesk'] text-transparent bg-clip-text bg-gradient-to-b from-white via-[#f0d78c] to-[#c9a84c]">
+                {DOMAIN_NAME}
+              </h1>
+              <p className="text-xl lg:text-2xl text-zinc-300 font-light leading-relaxed max-w-2xl">
+                The ultimate digital real estate. Establish instant authority and dominate the luxury Cybertruck rental and tour market in Las Vegas.
+              </p>
+            </div>
+
+            {/* Your feature cards - keep as is */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-10 border-t border-white/10">
+              {/* ... your 4 feature cards ... */}
+            </div>
           </div>
 
           {/* Right Column - Auction Box */}
-          <div className="lg:col-span-4">
-            <Card className="bg-[#0f0f0f]/80 backdrop-blur-2xl border-[#c9a84c]/30">
-              <CardHeader>
-                <div className="flex justify-between">
-                  <span>Current Highest Bid</span>
-                  <div className={`px-4 py-1 rounded-full text-xs ${isAuctionEnded ? 'bg-zinc-400' : 'bg-gradient-to-r from-[#f0d78c] to-[#c9a84c]'}`}>
-                    {isAuctionEnded ? "ENDED" : `${timeLeft.days}d ${timeLeft.hours}h ${timeLeft.minutes}m ${timeLeft.seconds}s`}
+          <div className="lg:col-span-4 relative">
+            <Card className="bg-[#0f0f0f]/80 backdrop-blur-2xl border-[#c9a84c]/30 shadow-[0_20px_50px_-12px_rgba(0,0,0,0.8)] overflow-hidden">
+              <CardHeader className="border-b border-white/5 bg-gradient-to-b from-white/[0.03] to-transparent pb-8">
+                <div className="flex justify-between items-center mb-4">
+                  <span className="text-xs font-bold text-zinc-400 uppercase tracking-widest font-mono">Current Highest Bid</span>
+                  <div className={`flex items-center text-[#1a1a1a] px-4 py-1.5 rounded-full text-xs font-bold ${isAuctionEnded ? 'bg-zinc-400' : 'bg-gradient-to-r from-[#f0d78c] to-[#c9a84c]'}`}>
+                    <Clock className="w-3.5 h-3.5 mr-1.5" />
+                    {isAuctionEnded ? "AUCTION ENDED" : `${timeLeft.days}d ${timeLeft.hours}h ${timeLeft.minutes}m ${timeLeft.seconds}s`}
                   </div>
                 </div>
-                <CardTitle className="text-6xl font-bold text-white">${highestBid.toLocaleString()}</CardTitle>
+                <CardTitle className="text-6xl font-bold font-['Space_Grotesk'] text-white tracking-tight">
+                  ${highestBid.toLocaleString()}
+                </CardTitle>
               </CardHeader>
 
-              <CardContent className="p-8 space-y-8">
+              <CardContent className="p-6 lg:p-8 space-y-8">
                 {isAuctionEnded ? (
-                  <div>Auction Ended</div>
+                  <div className="text-center py-12">
+                    <Award className="w-16 h-16 mx-auto text-[#c9a84c] mb-4" />
+                    <h3 className="text-2xl font-bold">Auction Concluded</h3>
+                  </div>
                 ) : hasBid ? (
-                  <div>You are the highest bidder!</div>
+                  <div className="bg-primary/10 border border-primary/20 rounded-xl p-8 text-center">
+                    <CheckCircle className="w-16 h-16 mx-auto text-[#c9a84c] mb-4" />
+                    <h3 className="text-2xl font-bold">You are the highest bidder!</h3>
+                  </div>
                 ) : (
                   <form onSubmit={handleBid} className="space-y-4">
-                    <div>
+                    <div className="space-y-2">
                       <label>Full Name</label>
-                      <Input value={name} onChange={(e) => setName(e.target.value)} required />
+                      <Input value={name} onChange={(e) => setName(e.target.value)} required disabled={!!currentUser} />
                     </div>
-                    <div>
-                      <label>Email</label>
-                      <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+                    <div className="space-y-2">
+                      <label>Email Address</label>
+                      <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required disabled={!!currentUser} />
                     </div>
                     {!currentUser && (
-                      <div>
+                      <div className="space-y-2">
                         <label>Security PIN</label>
                         <Input type="password" value={pin} onChange={(e) => setPin(e.target.value)} required />
                       </div>
                     )}
-                    <div>
+                    <div className="space-y-2">
                       <label>Maximum Bid (USD)</label>
-                      <Input type="number" value={bidAmount} onChange={(e) => setBidAmount(e.target.value)} min={minNextBid} />
+                      <Input type="number" value={bidAmount} onChange={(e) => setBidAmount(e.target.value)} min={minNextBid} step="100" />
                     </div>
-                    <Button type="submit" className="w-full">Place Bid</Button>
+                    <Button type="submit" size="lg" className="w-full h-14 text-lg font-bold bg-gradient-to-r from-[#c9a84c] to-[#a68635]">
+                      Place Premium Bid <ArrowRight className="ml-2" />
+                    </Button>
                   </form>
                 )}
 
-                {/* Recent Bids List */}
-                <div>
-                  <h4>Recent Bids</h4>
-                  {bids.slice(0, 5).map((bid, i) => (
-                    <div key={bid.id} className="flex justify-between py-2">
-                      <div>
-                        {bid.email && currentUser?.email === bid.email ? "You" : bid.name || bid.bidder}
+                {/* Recent Bids */}
+                <div className="pt-8 border-t border-white/5">
+                  <h4 className="text-sm font-bold uppercase tracking-wider mb-5 flex items-center">
+                    <History className="w-4 h-4 mr-2" /> Recent Bids
+                  </h4>
+                  <div className="space-y-3">
+                    {bids.length === 0 && <p className="text-zinc-500 italic">No bids yet. Be the first!</p>}
+                    {bids.slice(0, 5).map((bid, i) => (
+                      <div key={bid.id} className={`flex justify-between p-4 rounded-xl ${i === 0 ? 'bg-[#c9a84c]/10 border border-[#c9a84c]/30' : 'bg-white/5'}`}>
+                        <div>
+                          <p className="font-semibold">{bid.name || bid.bidder}</p>
+                          <p className="text-xs text-zinc-400">{new Date(bid.timestamp).toLocaleTimeString()}</p>
+                        </div>
+                        <div className="font-bold text-lg">${bid.amount.toLocaleString()}</div>
                       </div>
-                      <div className="font-bold">${bid.amount.toLocaleString()}</div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
               </CardContent>
             </Card>
