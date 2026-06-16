@@ -73,9 +73,12 @@ const Index = () => {
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPin, setLoginPin] = useState("");
 
-  // Reliable check: Is the current user the highest bidder?
+    // More reliable: Check if current user has the actual highest amount
   const isHighestBidder = currentUser && bids.length > 0 
-    ? bids[0].email?.toLowerCase() === currentUser.email?.toLowerCase()
+    ? bids.some(bid => 
+        bid.email?.toLowerCase() === currentUser.email?.toLowerCase() && 
+        bid.amount === highestBid
+      )
     : false;
 
   const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
@@ -392,7 +395,7 @@ const Index = () => {
               </CardHeader>
               
               <CardContent className="p-6 lg:p-8 space-y-8">
-                {isAuctionEnded ? (
+                               {isAuctionEnded ? (
                   <div className="bg-[#1a1a1a] border border-[#c9a84c]/30 rounded-xl p-8 text-center space-y-4 shadow-[0_0_30px_rgba(201,168,76,0.1)]">
                     <Award className="w-16 h-16 mx-auto text-[#c9a84c] mb-4" />
                     <h3 className="text-2xl font-bold text-white font-['Space_Grotesk']">Auction Concluded</h3>
@@ -409,7 +412,16 @@ const Index = () => {
                         <label className="text-sm font-medium text-foreground block">Update Your Maximum Bid</label>
                         <div className="relative">
                           <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground font-medium">$</span>
-                          <Input type="number" value={editMaxBidAmount} onChange={(e) => setEditMaxBidAmount(e.target.value)} className="pl-8" min={highestBid + 100} step="100" placeholder="New max bid" required />
+                          <Input 
+                            type="number" 
+                            value={editMaxBidAmount}
+                            onChange={(e) => setEditMaxBidAmount(e.target.value)}
+                            className="pl-8 bg-background/50 border-border focus-visible:ring-primary"
+                            min={highestBid + 100}
+                            step="100"
+                            placeholder="New max bid"
+                            required
+                          />
                         </div>
                         <Button type="submit" className="w-full">Update Max Bid</Button>
                       </form>
@@ -420,14 +432,23 @@ const Index = () => {
                     <CheckCircle className="w-16 h-16 mx-auto text-amber-400 mb-4" />
                     <h3 className="text-2xl font-bold text-white font-['Space_Grotesk']">Bid Placed!</h3>
                     <p className="text-amber-400 font-medium">You have been outbid.</p>
-                    <p className="text-muted-foreground">Update your max bid to stay in the lead.</p>
+                    <p className="text-muted-foreground">Update your max bid to stay competitive.</p>
 
                     <div className="mt-6 pt-6 border-t border-primary/20">
                       <form onSubmit={handleUpdateMaxBid} className="space-y-4">
                         <label className="text-sm font-medium text-foreground block">Update Your Maximum Bid</label>
                         <div className="relative">
                           <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground font-medium">$</span>
-                          <Input type="number" value={editMaxBidAmount} onChange={(e) => setEditMaxBidAmount(e.target.value)} className="pl-8" min={highestBid + 100} step="100" placeholder="New max bid" required />
+                          <Input 
+                            type="number" 
+                            value={editMaxBidAmount}
+                            onChange={(e) => setEditMaxBidAmount(e.target.value)}
+                            className="pl-8 bg-background/50 border-border focus-visible:ring-primary"
+                            min={highestBid + 100}
+                            step="100"
+                            placeholder="New max bid"
+                            required
+                          />
                         </div>
                         <Button type="submit" className="w-full">Update Max Bid</Button>
                       </form>
@@ -435,6 +456,7 @@ const Index = () => {
                   </div>
                 ) : (
                   <form onSubmit={handleBid} className="space-y-4">
+                    {/* bidding form unchanged */}
                     <div className="space-y-2">
                       <label className="text-sm font-medium text-foreground">Full Name</label>
                       <Input type="text" placeholder="John Doe" value={name} onChange={(e) => setName(e.target.value)} required />
@@ -461,6 +483,7 @@ const Index = () => {
                       Place Premium Bid <ArrowRight className="ml-2 w-5 h-5" />
                     </Button>
                   </form>
+                )}
                 )}
 
                 {/* Recent Bids */}
