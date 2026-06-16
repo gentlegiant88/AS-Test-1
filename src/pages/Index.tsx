@@ -302,7 +302,7 @@ const Index = () => {
     toast({ title: "Signed out" });
   };
 
-      return (
+        return (
     <div className="min-h-screen bg-[#0a0a0a] text-foreground font-sans selection:bg-[#c9a84c] selection:text-black flex flex-col relative overflow-hidden">
       {/* Background Elements */}
       <div className="absolute inset-0 z-0">
@@ -376,10 +376,29 @@ const Index = () => {
 
       <div className="container mx-auto px-4 py-12 lg:py-24 flex-1 relative z-20">
         
-        {/* === UPDATED GRID: Bidding card appears early on mobile === */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start">
           
-          {/* BIDDING CARD - Shows near the top on mobile */}
+          {/* === INTRO SECTION (Badge + Headline + Description) === */}
+          <div className="lg:col-span-7 space-y-8">
+            <Badge variant="outline" className="border-[#c9a84c]/50 bg-[#c9a84c]/10 text-[#f0d78c] px-5 py-2 text-sm uppercase tracking-widest font-mono backdrop-blur-md shadow-[0_0_15px_rgba(201,168,76,0.2)]">
+              <Activity className="w-4 h-4 mr-2 inline animate-pulse" /> Live Premium Auction
+            </Badge>
+
+            <h1 className="text-[clamp(1.25rem,6vw,3.5rem)] lg:text-[clamp(1.5rem,3.5vw,4rem)] xl:text-[clamp(2rem,4vw,4.5rem)] font-bold tracking-tighter font-['Space_Grotesk'] text-transparent bg-clip-text bg-gradient-to-b from-white via-[#f0d78c] to-[#c9a84c] drop-shadow-sm leading-tight">
+              Own the Definitive Cybertruck Brand in Las Vegas
+            </h1>
+
+            <p className="text-xl lg:text-2xl text-zinc-300 font-light leading-relaxed max-w-2xl">
+              The premium domain for luxury Cybertruck rentals, private desert tours, and exclusive high-end experiences in the entertainment capital of the world.
+            </p>
+
+            <p className="text-lg text-zinc-400 max-w-2xl">
+              With roughly <span className="text-[#f0d78c] font-medium">38–42 million visitors</span> every year, Las Vegas is one of the top destinations for premium experiences. 
+              <span className="font-medium text-white"> lasvegascybertruck.com</span> gives you instant brand authority in the fast-growing luxury electric vehicle and experiential tourism market.
+            </p>
+          </div>
+
+          {/* === BIDDING CARD (Now appears after intro on mobile) === */}
           <div className="lg:col-span-5 lg:order-2">
             <div className="lg:sticky lg:top-24">
               <div className="absolute -inset-0.5 bg-gradient-to-br from-[#c9a84c]/50 via-[#c9a84c]/10 to-transparent rounded-2xl blur-xl -z-10 opacity-70" />
@@ -531,31 +550,11 @@ const Index = () => {
             </div>
           </div>
 
-          {/* LEFT CONTENT - Headline + Features + Marketing Sections */}
-          <div className="lg:col-span-7 lg:order-1 space-y-12">
+          {/* === REST OF CONTENT (Feature cards + Marketing sections) === */}
+          <div className="lg:col-span-7 lg:order-1 space-y-12 pt-8 lg:pt-0">
             
-            {/* Hero Section */}
-            <div className="space-y-8">
-              <Badge variant="outline" className="border-[#c9a84c]/50 bg-[#c9a84c]/10 text-[#f0d78c] px-5 py-2 text-sm uppercase tracking-widest font-mono backdrop-blur-md shadow-[0_0_15px_rgba(201,168,76,0.2)]">
-                <Activity className="w-4 h-4 mr-2 inline animate-pulse" /> Live Premium Auction
-              </Badge>
-
-              <h1 className="text-[clamp(1.25rem,6vw,3.5rem)] lg:text-[clamp(1.5rem,3.5vw,4rem)] xl:text-[clamp(2rem,4vw,4.5rem)] font-bold tracking-tighter font-['Space_Grotesk'] text-transparent bg-clip-text bg-gradient-to-b from-white via-[#f0d78c] to-[#c9a84c] drop-shadow-sm leading-tight">
-                Own the Definitive Cybertruck Brand in Las Vegas
-              </h1>
-
-              <p className="text-xl lg:text-2xl text-zinc-300 font-light leading-relaxed max-w-2xl">
-                The premium domain for luxury Cybertruck rentals, private desert tours, and exclusive high-end experiences in the entertainment capital of the world.
-              </p>
-
-              <p className="text-lg text-zinc-400 max-w-2xl">
-                With roughly <span className="text-[#f0d78c] font-medium">38–42 million visitors</span> every year, Las Vegas is one of the top destinations for premium experiences. 
-                <span className="font-medium text-white"> lasvegascybertruck.com</span> gives you instant brand authority in the fast-growing luxury electric vehicle and experiential tourism market.
-              </p>
-            </div>
-
             {/* Feature Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-10 border-t border-white/10">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-6 border-t border-white/10">
               <div className="flex items-start space-x-5 bg-[#121212]/60 backdrop-blur-md border border-white/5 hover:border-[#c9a84c]/30 p-6 rounded-2xl transition-all duration-500 hover:shadow-[0_0_30px_-10px_rgba(201,168,76,0.2)] group">
                 <div className="bg-[#c9a84c]/10 p-4 rounded-xl group-hover:bg-[#c9a84c]/20 transition-colors"><Globe className="w-6 h-6 text-[#f0d78c]" /></div>
                 <div><h3 className="font-semibold text-white text-lg font-['Space_Grotesk']">Global Appeal</h3><p className="text-zinc-400 text-sm mt-1.5 leading-relaxed">Short, memorable, and globally understood.</p></div>
@@ -575,7 +574,7 @@ const Index = () => {
             </div>
 
             {/* The Las Vegas Opportunity */}
-            <div className="pt-12 border-t border-white/10">
+            <div className="pt-8 border-t border-white/10">
               <h2 className="text-3xl font-bold tracking-tight font-['Space_Grotesk'] text-white mb-4">
                 A Massive & Proven Market
               </h2>
@@ -589,7 +588,7 @@ const Index = () => {
             </div>
 
             {/* Why This Domain Stands Out */}
-            <div className="pt-10">
+            <div className="pt-8">
               <h2 className="text-3xl font-bold tracking-tight font-['Space_Grotesk'] text-white mb-4">
                 Instant Authority. Maximum Impact.
               </h2>
@@ -600,7 +599,7 @@ const Index = () => {
             </div>
 
             {/* Premium Use Cases */}
-            <div className="pt-10">
+            <div className="pt-8">
               <h2 className="text-3xl font-bold tracking-tight font-['Space_Grotesk'] text-white mb-6">
                 Built for Multiple High-Margin Revenue Streams
               </h2>
