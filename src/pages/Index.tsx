@@ -466,7 +466,7 @@ const Index = () => {
                       <label className="text-sm font-medium text-foreground">Your Maximum Bid (USD)</label>
                       <div className="relative">
                         <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground font-medium">$</span>
-                        <Input type="number" placeholder={minNextBid.toString()} value={bidAmount} onChange={(e) => setBidAmount(e.target.value)} min={minNextBid} step="100" required />
+                        <Input type="number" placeholder={minNextBid.toString()} value={bidAmount} onChange={(e) => setBidAmount(e.target.value)} min={minNextBid} step="100" required className="pl-8" />
                       </div>
                       <p className="text-xs text-muted-foreground text-right">Enter ${minNextBid.toLocaleString()} or more.</p>
                     </div>
