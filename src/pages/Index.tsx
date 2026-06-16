@@ -483,8 +483,7 @@ const Index = () => {
                       Place Premium Bid <ArrowRight className="ml-2 w-5 h-5" />
                     </Button>
                   </form>
-                )}
-                )}
+                )}              
 
                 {/* Recent Bids */}
                 <div className="pt-8 border-t border-white/5">
