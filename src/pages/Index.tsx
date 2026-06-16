@@ -80,6 +80,9 @@ const Index = () => {
   const isHighestBidder = currentUser && bids.length > 0 
     ? bids[0].email?.toLowerCase() === currentUser.email?.toLowerCase()
     : false;
+  const userMaxBid = currentUser 
+  ? bids.find(b => b.email?.toLowerCase() === currentUser.email?.toLowerCase())?.maxAmount 
+  : null;
 
   const minNextBid = highestBid > 0 ? highestBid + BID_INCREMENT : 100;
 
@@ -295,48 +298,77 @@ const Index = () => {
       <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-[#f0d78c] opacity-[0.05] blur-[120px] pointer-events-none z-10" />
 
       {/* Header */}
-      <header className="border-b border-[#c9a84c]/20 bg-[#0a0a0a]/60 backdrop-blur-xl sticky top-0 z-50 relative">
-        <div className="container mx-auto px-4 h-20 flex items-center justify-between">
-          <div className="font-['Space_Grotesk'] font-bold text-lg sm:text-2xl text-transparent bg-clip-text bg-gradient-to-r from-white to-[#c9a84c] tracking-tighter flex items-center whitespace-nowrap">
-            <Globe className="w-5 h-5 sm:w-6 sm:h-6 mr-2 text-[#c9a84c] shrink-0" />
-            <span className="truncate">{DOMAIN_NAME}</span>
-          </div>
-          <div>
-            {currentUser ? (
-              <div className="flex items-center space-x-4 relative z-50">
-                <span className="text-sm text-[#c9a84c] font-medium hidden sm:inline-block">{currentUser.email}</span>
-                <Button variant="ghost" size="sm" onClick={handleLogout} className="text-muted-foreground hover:text-white hover:bg-white/5">
-                  <LogOut className="w-4 h-4 mr-2" /> Sign Out
-                </Button>
-              </div>
-            ) : (
-              <Dialog open={isLoginOpen} onOpenChange={setIsLoginOpen}>
-                <DialogTrigger asChild>
-                  <Button variant="outline" size="sm" className="border-[#c9a84c]/50 text-[#c9a84c] hover:bg-[#c9a84c] hover:text-black transition-all duration-300 relative z-50">
-                    <LogIn className="w-4 h-4 mr-2" /> Sign In
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-md bg-[#121212] border-[#c9a84c]/30 shadow-2xl shadow-[#c9a84c]/10">
-                  <DialogHeader>
-                    <DialogTitle className="text-2xl font-['Space_Grotesk'] text-white">Sign In</DialogTitle>
-                  </DialogHeader>
-                  <form onSubmit={handleLogin} className="space-y-4 pt-4">
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-foreground">Email Address</label>
-                      <Input type="email" placeholder="you@example.com" value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} required />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-foreground">Security PIN</label>
-                      <Input type="password" placeholder="••••" maxLength={10} value={loginPin} onChange={(e) => setLoginPin(e.target.value)} required />
-                    </div>
-                    <Button type="submit" className="w-full bg-primary text-primary-foreground hover:bg-primary/90">Sign In</Button>
-                  </form>
-                </DialogContent>
-              </Dialog>
-            )}
-          </div>
+<header className="border-b border-[#c9a84c]/20 bg-[#0a0a0a]/60 backdrop-blur-xl sticky top-0 z-50 relative">
+  <div className="container mx-auto px-4 h-20 flex items-center justify-between">
+    
+    {/* Logo / Domain Name */}
+    <div className="font-['Space_Grotesk'] font-bold text-lg sm:text-2xl text-transparent bg-clip-text bg-gradient-to-r from-white to-[#c9a84c] tracking-tighter flex items-center whitespace-nowrap">
+      <Globe className="w-5 h-5 sm:w-6 sm:h-6 mr-2 text-[#c9a84c] shrink-0" />
+      <span className="truncate">{DOMAIN_NAME}</span>
+    </div>
+
+    {/* Right side: User info + Sign Out / Sign In */}
+    <div>
+      {currentUser ? (
+        <div className="flex items-center gap-4 relative z-50">
+          
+          {/* Email */}
+          <span className="text-sm text-[#c9a84c] font-medium hidden sm:inline-block">
+            {currentUser.email}
+          </span>
+
+          {/* Your Max Bid */}
+          {userMaxBid && (
+            <div className="hidden md:flex items-center gap-1.5 text-sm">
+              <span className="text-zinc-400">Your Max Bid</span>
+              <span className="font-semibold text-[#f0d78c]">
+                ${userMaxBid.toLocaleString()}
+              </span>
+            </div>
+          )}
+
+          {/* Sign Out Button */}
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={handleLogout} 
+            className="text-muted-foreground hover:text-white hover:bg-white/5"
+          >
+            <LogOut className="w-4 h-4 mr-2" /> Sign Out
+          </Button>
         </div>
-      </header>
+      ) : (
+        <Dialog open={isLoginOpen} onOpenChange={setIsLoginOpen}>
+          <DialogTrigger asChild>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="border-[#c9a84c]/50 text-[#c9a84c] hover:bg-[#c9a84c] hover:text-black transition-all duration-300 relative z-50"
+            >
+              <LogIn className="w-4 h-4 mr-2" /> Sign In
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-md bg-[#121212] border-[#c9a84c]/30 shadow-2xl shadow-[#c9a84c]/10">
+            <DialogHeader>
+              <DialogTitle className="text-2xl font-['Space_Grotesk'] text-white">Sign In</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleLogin} className="space-y-4 pt-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">Email Address</label>
+                <Input type="email" placeholder="you@example.com" value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} required />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">Security PIN</label>
+                <Input type="password" placeholder="••••" maxLength={10} value={loginPin} onChange={(e) => setLoginPin(e.target.value)} required />
+              </div>
+              <Button type="submit" className="w-full bg-primary text-primary-foreground hover:bg-primary/90">Sign In</Button>
+            </form>
+          </DialogContent>
+        </Dialog>
+      )}
+    </div>
+  </div>
+</header>
 
       <div className="container mx-auto px-4 py-12 lg:py-24 flex-1 relative z-20">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-start">
