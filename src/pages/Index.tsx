@@ -31,7 +31,7 @@ const Index = () => {
   const [name, setName] = useState<string>("");
   const [email, setEmail] = useState<string>("");
   const [pin, setPin] = useState<string>("");
-  const [editMaxBidAmount, setEditMaxBidAmount] = useState<string>("");   // ← Missing state added
+  const [editMaxBidAmount, setEditMaxBidAmount] = useState<string>("");
 
   const [currentUser, setCurrentUser] = useState<{name: string, email: string, pin?: string} | null>(() => {
     const saved = localStorage.getItem('auction_user');
@@ -73,6 +73,7 @@ const Index = () => {
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPin, setLoginPin] = useState("");
 
+  // Reliable check: Is the current user the highest bidder?
   const isHighestBidder = currentUser && bids.length > 0 
     ? bids[0].email?.toLowerCase() === currentUser.email?.toLowerCase()
     : false;
@@ -81,7 +82,7 @@ const Index = () => {
   const [isAuctionEnded, setIsAuctionEnded] = useState(false);
 
   const highestBid = bids.length > 0 ? Math.max(...bids.map(b => b.amount)) : 0;
-  const minNextBid = highestBid > 0 ? highestBid + BID_INCREMENT : RESERVE_PRICE;
+  const minNextBid = highestBid > 0 ? highestBid + BID_INCREMENT : 100;
 
   // Timer
   useEffect(() => {
@@ -262,7 +263,7 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-foreground font-sans selection:bg-[#c9a84c] selection:text-black flex flex-col relative overflow-hidden">
-      {/* Background + Header (unchanged) */}
+      {/* Background Elements */}
       <div className="absolute inset-0 z-0">
         <div className="absolute inset-0 bg-[#0a0a0a]/80 z-10" />
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#0a0a0a]/90 to-[#0a0a0a] z-10" />
@@ -275,9 +276,11 @@ const Index = () => {
         <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay z-20 pointer-events-none" />
       </div>
 
+      {/* Decorative Gold Glows */}
       <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] rounded-full bg-[#c9a84c] opacity-[0.07] blur-[150px] pointer-events-none z-10" />
       <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-[#f0d78c] opacity-[0.05] blur-[120px] pointer-events-none z-10" />
 
+      {/* Header */}
       <header className="border-b border-[#c9a84c]/20 bg-[#0a0a0a]/60 backdrop-blur-xl sticky top-0 z-50 relative">
         <div className="container mx-auto px-4 h-20 flex items-center justify-between">
           <div className="font-['Space_Grotesk'] font-bold text-lg sm:text-2xl text-transparent bg-clip-text bg-gradient-to-r from-white to-[#c9a84c] tracking-tighter flex items-center whitespace-nowrap">
@@ -324,7 +327,7 @@ const Index = () => {
       <div className="container mx-auto px-4 py-12 lg:py-24 flex-1 relative z-20">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-start">
           
-          {/* Left Column (unchanged) */}
+          {/* Left Column */}
           <div className="lg:col-span-8 space-y-12 animate-in fade-in slide-in-from-bottom-8 duration-1000">
             <div className="space-y-8">
               <Badge variant="outline" className="border-[#c9a84c]/50 bg-[#c9a84c]/10 text-[#f0d78c] px-5 py-2 text-sm uppercase tracking-widest font-mono backdrop-blur-md shadow-[0_0_15px_rgba(201,168,76,0.2)]">
@@ -339,7 +342,7 @@ const Index = () => {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-10 border-t border-white/10">
-              {/* Feature cards - unchanged */}
+              {/* Feature cards unchanged */}
               <div className="flex items-start space-x-5 bg-[#121212]/60 backdrop-blur-md border border-white/5 hover:border-[#c9a84c]/30 p-6 rounded-2xl transition-all duration-500 hover:shadow-[0_0_30px_-10px_rgba(201,168,76,0.2)] group">
                 <div className="bg-[#c9a84c]/10 p-4 rounded-xl group-hover:bg-[#c9a84c]/20 transition-colors"><Globe className="w-6 h-6 text-[#f0d78c]" /></div>
                 <div><h3 className="font-semibold text-white text-lg font-['Space_Grotesk']">Global Appeal</h3><p className="text-zinc-400 text-sm mt-1.5 leading-relaxed">Short, memorable, and globally understood.</p></div>
@@ -359,7 +362,7 @@ const Index = () => {
             </div>
           </div>
 
-                             {/* Right Column: Auction Tool */}
+          {/* Right Column - Fully Updated */}
           <div className="lg:col-span-4 relative animate-in fade-in slide-in-from-bottom-12 duration-1000 delay-200 fill-mode-both">
             <div className="absolute -inset-0.5 bg-gradient-to-br from-[#c9a84c]/50 via-[#c9a84c]/10 to-transparent rounded-2xl blur-xl -z-10 opacity-70" />
             
@@ -377,15 +380,19 @@ const Index = () => {
                 <CardTitle className="text-6xl font-bold font-['Space_Grotesk'] text-white tracking-tight">
                   ${highestBid.toLocaleString()}
                 </CardTitle>
-                {highestBid >= RESERVE_PRICE && (
+                {highestBid >= RESERVE_PRICE ? (
                   <p className="text-sm text-[#c9a84c] mt-3 font-medium flex items-center">
                     <ShieldCheck className="w-4 h-4 mr-1.5" /> Reserve price met. Domain will be sold.
+                  </p>
+                ) : (
+                  <p className="text-sm text-amber-400 mt-3 font-medium flex items-center">
+                    <ShieldCheck className="w-4 h-4 mr-1.5" /> Reserve price not met yet.
                   </p>
                 )}
               </CardHeader>
               
               <CardContent className="p-6 lg:p-8 space-y-8">
-                             {isAuctionEnded ? (
+                {isAuctionEnded ? (
                   <div className="bg-[#1a1a1a] border border-[#c9a84c]/30 rounded-xl p-8 text-center space-y-4 shadow-[0_0_30px_rgba(201,168,76,0.1)]">
                     <Award className="w-16 h-16 mx-auto text-[#c9a84c] mb-4" />
                     <h3 className="text-2xl font-bold text-white font-['Space_Grotesk']">Auction Concluded</h3>
@@ -394,57 +401,33 @@ const Index = () => {
                   <div className="bg-primary/10 border border-primary/20 rounded-xl p-8 text-center space-y-4">
                     <CheckCircle className="w-16 h-16 mx-auto text-[#c9a84c] mb-4" />
                     <h3 className="text-2xl font-bold text-white font-['Space_Grotesk']">Bid Placed!</h3>
-                    <p className="text-muted-foreground">
-                      You are currently the highest bidder.
-                    </p>
+                    <p className="text-muted-foreground">You are currently the highest bidder.</p>
                     <p className="text-sm text-white">We will contact you at <span className="font-medium">{currentUser?.email}</span> if you win the auction.</p>
 
-                    {/* Update Max Bid */}
                     <div className="mt-6 pt-6 border-t border-primary/20">
                       <form onSubmit={handleUpdateMaxBid} className="space-y-4">
                         <label className="text-sm font-medium text-foreground block">Update Your Maximum Bid</label>
                         <div className="relative">
                           <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground font-medium">$</span>
-                          <Input 
-                            type="number" 
-                            value={editMaxBidAmount}
-                            onChange={(e) => setEditMaxBidAmount(e.target.value)}
-                            className="pl-8 bg-background/50 border-border focus-visible:ring-primary"
-                            min={highestBid + 100}
-                            step="100"
-                            placeholder="New max bid"
-                            required
-                          />
+                          <Input type="number" value={editMaxBidAmount} onChange={(e) => setEditMaxBidAmount(e.target.value)} className="pl-8" min={highestBid + 100} step="100" placeholder="New max bid" required />
                         </div>
                         <Button type="submit" className="w-full">Update Max Bid</Button>
                       </form>
                     </div>
                   </div>
-                ) : currentUser ? (   // Changed from hasBid
+                ) : currentUser ? (
                   <div className="bg-primary/10 border border-primary/20 rounded-xl p-8 text-center space-y-4">
-                    <CheckCircle className="w-16 h-16 mx-auto text-[#c9a84c] mb-4" />
+                    <CheckCircle className="w-16 h-16 mx-auto text-amber-400 mb-4" />
                     <h3 className="text-2xl font-bold text-white font-['Space_Grotesk']">Bid Placed!</h3>
-                    <p className="text-muted-foreground">
-                      You are in the running.
-                    </p>
-                    <p className="text-sm text-white">We will contact you at <span className="font-medium">{currentUser?.email}</span> if you win the auction.</p>
+                    <p className="text-amber-400 font-medium">You have been outbid.</p>
+                    <p className="text-muted-foreground">Update your max bid to stay in the lead.</p>
 
-                    {/* Update Max Bid */}
                     <div className="mt-6 pt-6 border-t border-primary/20">
                       <form onSubmit={handleUpdateMaxBid} className="space-y-4">
                         <label className="text-sm font-medium text-foreground block">Update Your Maximum Bid</label>
                         <div className="relative">
                           <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground font-medium">$</span>
-                          <Input 
-                            type="number" 
-                            value={editMaxBidAmount}
-                            onChange={(e) => setEditMaxBidAmount(e.target.value)}
-                            className="pl-8 bg-background/50 border-border focus-visible:ring-primary"
-                            min={highestBid + 100}
-                            step="100"
-                            placeholder="New max bid"
-                            required
-                          />
+                          <Input type="number" value={editMaxBidAmount} onChange={(e) => setEditMaxBidAmount(e.target.value)} className="pl-8" min={highestBid + 100} step="100" placeholder="New max bid" required />
                         </div>
                         <Button type="submit" className="w-full">Update Max Bid</Button>
                       </form>
@@ -475,12 +458,12 @@ const Index = () => {
                       <p className="text-xs text-muted-foreground text-right">Enter ${minNextBid.toLocaleString()} or more.</p>
                     </div>
                     <Button type="submit" size="lg" className="w-full h-14 text-lg font-bold bg-gradient-to-r from-[#c9a84c] to-[#a68635] hover:from-[#f0d78c] hover:to-[#c9a84c] text-black shadow-[0_0_20px_rgba(201,168,76,0.3)] transition-all duration-300">
-                      Place Max Bid <ArrowRight className="ml-2 w-5 h-5" />
+                      Place Premium Bid <ArrowRight className="ml-2 w-5 h-5" />
                     </Button>
                   </form>
                 )}
 
-                {/* Recent Bids - Sorted by amount descending */}
+                {/* Recent Bids */}
                 <div className="pt-8 border-t border-white/5">
                   <h4 className="text-sm font-bold uppercase tracking-wider flex items-center text-zinc-400 mb-5 font-mono">
                     <History className="w-4 h-4 mr-2 text-[#c9a84c]" /> Recent Bids
@@ -489,7 +472,7 @@ const Index = () => {
                     {bids.length === 0 && <p className="text-sm text-zinc-500 italic py-4">No bids placed yet. Be the first!</p>}
                     {bids
                       .slice(0, 5)
-                      .sort((a, b) => b.amount - a.amount)   // Sort highest first
+                      .sort((a, b) => b.amount - a.amount)
                       .map((bid, i) => {
                         const isYou = bid.email && currentUser?.email === bid.email;
                         const isHighest = i === 0;
