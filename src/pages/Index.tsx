@@ -83,6 +83,30 @@ const Index = () => {
   const userMaxBid = currentUser 
   ? bids.find(b => b.email?.toLowerCase() === currentUser.email?.toLowerCase())?.maxAmount 
   : null;
+    // Stable bidder numbers (locked to email, based on first bid time)
+  const bidderNumberMap = bids.length > 0 
+    ? (() => {
+        const uniqueEmails = [...new Set(
+          bids.map(b => b.email?.toLowerCase()).filter(Boolean)
+        )];
+
+        // Sort emails by their first bid timestamp
+        const sortedEmails = uniqueEmails
+          .map(email => {
+            const firstBid = bids
+              .filter(b => b.email?.toLowerCase() === email)
+              .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())[0];
+            return { email, firstTime: firstBid ? new Date(firstBid.timestamp).getTime() : 0 };
+          })
+          .sort((a, b) => a.firstTime - b.firstTime);
+
+        const map = {};
+        sortedEmails.forEach((item, index) => {
+          map[item.email] = index + 1;
+        });
+        return map;
+      })()
+    : {};
 
   const minNextBid = highestBid > 0 ? highestBid + BID_INCREMENT : 100;
 
@@ -508,21 +532,31 @@ const Index = () => {
                   </form>
                 )}
 
-                {/* Recent Bids */}
+                               {/* Recent Bids */}
                 <div className="pt-8 border-t border-white/5">
                   <h4 className="text-sm font-bold uppercase tracking-wider flex items-center text-zinc-400 mb-5 font-mono">
                     <History className="w-4 h-4 mr-2 text-[#c9a84c]" /> Recent Bids
                   </h4>
                   <div className="space-y-3">
                     {bids.length === 0 && <p className="text-sm text-zinc-500 italic py-4">No bids placed yet. Be the first!</p>}
+                    
                     {bids.slice(0, 5).map((bid, i) => {
                       const isYou = bid.email && currentUser?.email === bid.email;
                       const isHighest = i === 0;
+                      const stableNumber = bidderNumberMap[bid.email?.toLowerCase()] || (i + 1);
+
                       return (
-                        <div key={bid.id} className={`flex justify-between items-center p-4 rounded-xl transition-all ${isHighest ? 'bg-[#c9a84c]/10 border border-[#c9a84c]/30 shadow-[0_0_15px_rgba(201,168,76,0.1)]' : 'bg-white/5 border border-transparent'}`}>
+                        <div 
+                          key={bid.id} 
+                          className={`flex justify-between items-center p-4 rounded-xl transition-all ${
+                            isHighest 
+                              ? 'bg-[#c9a84c]/10 border border-[#c9a84c]/30 shadow-[0_0_15px_rgba(201,168,76,0.1)]' 
+                              : 'bg-white/5 border border-transparent'
+                          }`}
+                        >
                           <div>
                             <p className="font-semibold text-sm text-white">
-                              {isYou ? "You" : `Bidder #${i + 1}`}
+                              {isYou ? "You" : `Bidder #${stableNumber}`}
                             </p>
                             <p className="text-xs text-zinc-400 mt-0.5">
                               {new Date(bid.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -532,7 +566,11 @@ const Index = () => {
                             <p className={`font-bold font-['Space_Grotesk'] text-lg ${isHighest ? 'text-[#f0d78c]' : 'text-white'}`}>
                               ${bid.amount.toLocaleString()}
                             </p>
-                            {isHighest && <span className="text-[10px] uppercase tracking-widest text-[#c9a84c] font-bold">HIGHEST</span>}
+                            {isHighest && (
+                              <span className="text-[10px] uppercase tracking-widest text-[#c9a84c] font-bold">
+                                HIGHEST
+                              </span>
+                            )}
                           </div>
                         </div>
                       );
