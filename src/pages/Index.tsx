@@ -139,7 +139,7 @@ const Index = () => {
     }).catch(() => {});
   };
 
-  const handleBid = async (e: React.FormEvent) => {
+    const handleBid = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isAuctionEnded) {
       toast({ title: "Auction Ended", description: "Bidding is no longer allowed.", variant: "destructive" });
@@ -157,6 +157,17 @@ const Index = () => {
     const amount = parseFloat(bidAmount.replace(/,/g, ''));
     if (isNaN(amount) || amount < minNextBid) {
       toast({ title: "Bid too low", description: `Minimum next bid is $${minNextBid.toLocaleString()}`, variant: "destructive" });
+      return;
+    }
+
+    // === NEW TIE PROTECTION ===
+    const currentHighestMax = bids.length > 0 ? Math.max(...bids.map(b => b.maxAmount || b.amount)) : 0;
+    if (amount <= currentHighestMax) {
+      toast({ 
+        title: "Max bid too low", 
+        description: `Please enter a max bid higher than $${currentHighestMax.toLocaleString()} to take the lead.`, 
+        variant: "destructive" 
+      });
       return;
     }
 
@@ -186,6 +197,8 @@ const Index = () => {
           description: `Auto-bidding active up to $${amount.toLocaleString()}`,
           className: "bg-primary text-primary-foreground border-none"
         });
+      } else if (result.error) {
+        toast({ title: "Bid rejected", description: result.error, variant: "destructive" });
       }
     } catch (err) {
       toast({ title: "Failed to place bid", variant: "destructive" });
