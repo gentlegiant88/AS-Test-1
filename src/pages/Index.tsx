@@ -385,7 +385,7 @@ const Index = () => {
               </Badge>
 
               {/* === UPDATED HERO === */}
-              <h1 className="text-[clamp(1.25rem,6vw,3.5rem)] lg:text-[clamp(1.5rem,3.5vw,4rem)] xl:text-[clamp(2rem,4vw,4.5rem)] whitespace-nowrap font-bold tracking-tighter font-['Space_Grotesk'] text-transparent bg-clip-text bg-gradient-to-b from-white via-[#f0d78c] to-[#c9a84c] drop-shadow-sm leading-tight">
+              <h1 className="text-[clamp(1.25rem,6vw,3.5rem)] lg:text-[clamp(1.5rem,3.5vw,4rem)] xl:text-[clamp(2rem,4vw,4.5rem)] font-bold tracking-tighter font-['Space_Grotesk'] text-transparent bg-clip-text bg-gradient-to-b from-white via-[#f0d78c] to-[#c9a84c] drop-shadow-sm leading-tight">
                 Own the Definitive Cybertruck Brand in Las Vegas
               </h1>
 
