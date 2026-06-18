@@ -33,7 +33,7 @@ const Index = () => {
   const [pin, setPin] = useState<string>("");
   const [editMaxBidAmount, setEditMaxBidAmount] = useState<string>("");
 
-  // === NEW: Turnstile Token ===
+  // === Turnstile Token ===
   const [turnstileToken, setTurnstileToken] = useState<string>("");
 
   const [currentUser, setCurrentUser] = useState<{name: string, email: string, pin?: string} | null>(() => {
@@ -163,7 +163,7 @@ const Index = () => {
   };
 
   // ============================================
-  // UPDATED handleBid with Turnstile
+  // UPDATED handleBid with programmatic Turnstile
   // ============================================
   const handleBid = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -183,11 +183,25 @@ const Index = () => {
       return;
     }
 
-    // === NEW: Require Turnstile token ===
-    if (!turnstileToken) {
+    // === Execute Turnstile programmatically ===
+    try {
+      const token = await new Promise<string>((resolve, reject) => {
+        if (window.turnstile) {
+          window.turnstile.execute("#turnstile-widget", {
+            action: "submit",
+            callback: (token: string) => resolve(token),
+            errorCallback: (err: any) => reject(err),
+          });
+        } else {
+          reject(new Error("Turnstile not loaded"));
+        }
+      });
+
+      setTurnstileToken(token);
+    } catch (err) {
       toast({
-        title: "Verification required",
-        description: "Please complete the security check.",
+        title: "Verification failed",
+        description: "Please try again.",
         variant: "destructive"
       });
       return;
@@ -220,7 +234,7 @@ const Index = () => {
           name,
           email,
           pin: currentUser?.pin || pin,
-          turnstileToken,                    // ← Send Turnstile token
+          turnstileToken,
         })
       });
 
@@ -229,7 +243,7 @@ const Index = () => {
       if (result.success) {
         setCurrentUser({ name, email, pin: currentUser?.pin || pin });
         setBidAmount("");
-        setTurnstileToken("");               // ← Clear token after success
+        setTurnstileToken("");
         await fetchBids();
         sendGHLTracking(name, email, amount, currentUser?.pin || pin);
 
@@ -507,10 +521,10 @@ const Index = () => {
 
                       {/* === CLOUDFLARE TURNSTILE (Invisible) === */}
                       <div 
+                        id="turnstile-widget"
                         className="cf-turnstile" 
                         data-sitekey="0x4AAAAAADnaeZ7YWhG4R1VA"
                         data-size="invisible"
-                        data-callback={(token: string) => setTurnstileToken(token)}
                       ></div>
 
                       <Button type="submit" size="lg" className="w-full h-14 text-lg font-bold bg-gradient-to-r from-[#c9a84c] to-[#a68635] hover:from-[#f0d78c] hover:to-[#c9a84c] text-black shadow-[0_0_20px_rgba(201,168,76,0.3)] transition-all duration-300">
