@@ -709,15 +709,7 @@ const Index = () => {
                         >
                           Cloudflare Turnstile
                         </a>{" "}
-                        for bot protection. See their{" "}
-                        <a
-                          href="https://www.cloudflare.com/en-gb/turnstile-privacy-policy/"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-[#c9a84c] hover:underline"
-                        >
-                          Privacy Policy
-                        </a>.
+                        for bot protection.
                       </p>
                     </div>
                   </div>
