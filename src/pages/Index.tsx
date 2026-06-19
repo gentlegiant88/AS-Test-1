@@ -265,24 +265,37 @@ const Index = () => {
 
   const handleUpdateMaxBid = async (e: React.FormEvent) => {
   e.preventDefault();
-  console.log("Update Max Bid button clicked!");
-
-  console.log("isAuctionEnded:", isAuctionEnded);
-  console.log("currentUser:", currentUser);
 
   if (isAuctionEnded || !currentUser) {
     toast({ title: "Error", description: "Please sign in to update your max bid.", variant: "destructive" });
-    console.log("Failed early check: auction ended or not logged in");
+    return;
+  }
+
+  // === Execute Turnstile for update ===
+  let token = "";
+  try {
+    if (window.turnstile) {
+      window.turnstile.reset("#turnstile-widget-update");
+      token = await new Promise<string>((resolve, reject) => {
+        window.turnstile.execute("#turnstile-widget-update", {
+          action: "update",
+          callback: (t: string) => resolve(t),
+          errorCallback: (err: any) => reject(err),
+        });
+      });
+    }
+  } catch (err) {
+    toast({
+      title: "Verification failed",
+      description: "Please try again.",
+      variant: "destructive"
+    });
     return;
   }
 
   const amount = parseFloat(editMaxBidAmount.replace(/,/g, ''));
-  console.log("Parsed amount:", amount);
-  console.log("Current highest bid:", highestBid);
-
   if (isNaN(amount) || amount <= highestBid) {
     toast({ title: "Invalid amount", description: `Max bid must be higher than current highest bid ($${highestBid.toLocaleString()})`, variant: "destructive" });
-    console.log("Failed amount validation");
     return;
   }
 
@@ -295,12 +308,11 @@ const Index = () => {
         maxAmount: amount,
         name: currentUser.name,
         email: currentUser.email,
-        pin: currentUser.pin
+        pin: currentUser.pin,
+        turnstileToken: token   // ← Send token
       })
     });
     const result = await res.json();
-    console.log("API Response:", result);
-
     if (result.success) {
       await fetchBids();
       setEditMaxBidAmount("");
@@ -316,10 +328,9 @@ const Index = () => {
         className: "bg-primary text-primary-foreground border-none"
       });
     } else {
-      toast({ title: "Update failed", description: result.error || "Unknown error", variant: "destructive" });
+      toast({ title: "Update failed", description: result.error, variant: "destructive" });
     }
   } catch (err) {
-    console.error("Update error:", err);
     toast({ title: "Failed to update max bid", variant: "destructive" });
   }
 };
@@ -492,6 +503,15 @@ const Index = () => {
                             <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground font-medium">$</span>
                             <Input type="number" value={editMaxBidAmount} onChange={(e) => setEditMaxBidAmount(e.target.value)} className="pl-8" min={highestBid + 100} step="100" placeholder="New max bid" required />
                           </div>
+                          
+                          {/* Turnstile for Update */}
+                            <div 
+                              id="turnstile-widget-update"
+                              className="cf-turnstile" 
+                              data-sitekey="0x4AAAAAADnaeZ7YWhG4R1VA"
+                              data-size="invisible"
+                            ></div>
+                          
                           <Button type="submit" className="w-full">Update Max Bid</Button>
                         </form>
                       </div>
@@ -509,6 +529,15 @@ const Index = () => {
                             <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground font-medium">$</span>
                             <Input type="number" value={editMaxBidAmount} onChange={(e) => setEditMaxBidAmount(e.target.value)} className="pl-8" min={highestBid + 100} step="100" placeholder="New max bid" required />
                           </div>
+                          
+                          {/* Turnstile for Update */}
+                            <div 
+                              id="turnstile-widget-update"
+                              className="cf-turnstile" 
+                              data-sitekey="0x4AAAAAADnaeZ7YWhG4R1VA"
+                              data-size="invisible"
+                            ></div>
+                          
                           <Button type="submit" className="w-full">Update Max Bid</Button>
                         </form>
                       </div>
