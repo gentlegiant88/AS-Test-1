@@ -166,99 +166,98 @@ const Index = () => {
   // UPDATED handleBid with programmatic Turnstile
   // ============================================
   const handleBid = async (e: React.FormEvent) => {
-    e.preventDefault();
+  e.preventDefault();
 
-    if (isAuctionEnded) {
-      toast({ title: "Auction Ended", description: "Bidding is no longer allowed.", variant: "destructive" });
-      return;
-    }
+  if (isAuctionEnded) {
+    toast({ title: "Auction Ended", description: "Bidding is no longer allowed.", variant: "destructive" });
+    return;
+  }
 
-    if (!name || !email) {
-      toast({ title: "Name & Email required", variant: "destructive" });
-      return;
-    }
+  if (!name || !email) {
+    toast({ title: "Name & Email required", variant: "destructive" });
+    return;
+  }
 
-    if (!currentUser && !pin) {
-      toast({ title: "PIN required", variant: "destructive" });
-      return;
-    }
+  if (!currentUser && !pin) {
+    toast({ title: "PIN required", variant: "destructive" });
+    return;
+  }
 
-    // === Execute Turnstile programmatically ===
-    try {
-      const token = await new Promise<string>((resolve, reject) => {
-        if (window.turnstile) {
-          window.turnstile.execute("#turnstile-widget", {
-            action: "submit",
-            callback: (token: string) => resolve(token),
-            errorCallback: (err: any) => reject(err),
-          });
-        } else {
-          reject(new Error("Turnstile not loaded"));
-        }
-      });
-
-      setTurnstileToken(token);
-    } catch (err) {
-      toast({
-        title: "Verification failed",
-        description: "Please try again.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    const amount = parseFloat(bidAmount.replace(/,/g, ''));
-    if (isNaN(amount) || amount < minNextBid) {
-      toast({ title: "Bid too low", description: `Minimum next bid is $${minNextBid.toLocaleString()}`, variant: "destructive" });
-      return;
-    }
-
-    // === TIE PROTECTION ===
-    const currentHighestMax = bids.length > 0 ? Math.max(...bids.map(b => b.maxAmount || b.amount)) : 0;
-    if (amount <= currentHighestMax) {
-      toast({
-        title: "Max bid too low",
-        description: `Please enter a max bid higher than $${currentHighestMax.toLocaleString()} to take the lead.`,
-        variant: "destructive"
-      });
-      return;
-    }
-
-    try {
-      const res = await fetch(`${API_BASE}/api/place-bid`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          amount: minNextBid,
-          maxAmount: amount,
-          name,
-          email,
-          pin: currentUser?.pin || pin,
-          turnstileToken,
-        })
-      });
-
-      const result = await res.json();
-
-      if (result.success) {
-        setCurrentUser({ name, email, pin: currentUser?.pin || pin });
-        setBidAmount("");
-        setTurnstileToken("");
-        await fetchBids();
-        sendGHLTracking(name, email, amount, currentUser?.pin || pin);
-
-        toast({
-          title: "Bid placed successfully!",
-          description: `Auto-bidding active up to $${amount.toLocaleString()}`,
-          className: "bg-primary text-primary-foreground border-none"
+  // === Execute Turnstile and get token immediately ===
+  let token = "";
+  try {
+    token = await new Promise<string>((resolve, reject) => {
+      if (window.turnstile) {
+        window.turnstile.execute("#turnstile-widget", {
+          action: "submit",
+          callback: (t: string) => resolve(t),
+          errorCallback: (err: any) => reject(err),
         });
-      } else if (result.error) {
-        toast({ title: "Bid rejected", description: result.error, variant: "destructive" });
+      } else {
+        reject(new Error("Turnstile not loaded"));
       }
-    } catch (err) {
-      toast({ title: "Failed to place bid", variant: "destructive" });
+    });
+  } catch (err) {
+    toast({
+      title: "Verification failed",
+      description: "Please try again.",
+      variant: "destructive"
+    });
+    return;
+  }
+
+  const amount = parseFloat(bidAmount.replace(/,/g, ''));
+  if (isNaN(amount) || amount < minNextBid) {
+    toast({ title: "Bid too low", description: `Minimum next bid is $${minNextBid.toLocaleString()}`, variant: "destructive" });
+    return;
+  }
+
+  // === TIE PROTECTION ===
+  const currentHighestMax = bids.length > 0 ? Math.max(...bids.map(b => b.maxAmount || b.amount)) : 0;
+  if (amount <= currentHighestMax) {
+    toast({
+      title: "Max bid too low",
+      description: `Please enter a max bid higher than $${currentHighestMax.toLocaleString()} to take the lead.`,
+      variant: "destructive"
+    });
+    return;
+  }
+
+  try {
+    const res = await fetch(`${API_BASE}/api/place-bid`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        amount: minNextBid,
+        maxAmount: amount,
+        name,
+        email,
+        pin: currentUser?.pin || pin,
+        turnstileToken: token,           // ← Use the token variable directly
+      })
+    });
+
+    const result = await res.json();
+
+    if (result.success) {
+      setCurrentUser({ name, email, pin: currentUser?.pin || pin });
+      setBidAmount("");
+      setTurnstileToken("");
+      await fetchBids();
+      sendGHLTracking(name, email, amount, currentUser?.pin || pin);
+
+      toast({
+        title: "Bid placed successfully!",
+        description: `Auto-bidding active up to $${amount.toLocaleString()}`,
+        className: "bg-primary text-primary-foreground border-none"
+      });
+    } else if (result.error) {
+      toast({ title: "Bid rejected", description: result.error, variant: "destructive" });
     }
-  };
+  } catch (err) {
+    toast({ title: "Failed to place bid", variant: "destructive" });
+  }
+};
 
   const handleUpdateMaxBid = async (e: React.FormEvent) => {
     e.preventDefault();
