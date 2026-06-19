@@ -33,9 +33,6 @@ const Index = () => {
   const [pin, setPin] = useState<string>("");
   const [editMaxBidAmount, setEditMaxBidAmount] = useState<string>("");
 
-  // === Turnstile Token ===
-  const [turnstileToken, setTurnstileToken] = useState<string>("");
-
   const [currentUser, setCurrentUser] = useState<{name: string, email: string, pin?: string} | null>(() => {
     const saved = localStorage.getItem('auction_user');
     if (saved) {
@@ -163,177 +160,152 @@ const Index = () => {
   };
 
   // ============================================
-  // UPDATED handleBid with programmatic Turnstile
+  // handleBid (with Turnstile)
   // ============================================
   const handleBid = async (e: React.FormEvent) => {
-  e.preventDefault();
+    e.preventDefault();
 
-  if (isAuctionEnded) {
-    toast({ title: "Auction Ended", description: "Bidding is no longer allowed.", variant: "destructive" });
-    return;
-  }
+    if (isAuctionEnded) {
+      toast({ title: "Auction Ended", description: "Bidding is no longer allowed.", variant: "destructive" });
+      return;
+    }
 
-  if (!name || !email) {
-    toast({ title: "Name & Email required", variant: "destructive" });
-    return;
-  }
+    if (!name || !email) {
+      toast({ title: "Name & Email required", variant: "destructive" });
+      return;
+    }
 
-  if (!currentUser && !pin) {
-    toast({ title: "PIN required", variant: "destructive" });
-    return;
-  }
+    if (!currentUser && !pin) {
+      toast({ title: "PIN required", variant: "destructive" });
+      return;
+    }
 
-  // === Execute Turnstile and get token immediately ===
-  let token = "";
-  try {
-    // Reset the widget first so we always get a fresh token
-  if (window.turnstile) {
-    window.turnstile.reset("#turnstile-widget");
-  }
-    token = await new Promise<string>((resolve, reject) => {
+    // === Execute Turnstile ===
+    let token = "";
+    try {
       if (window.turnstile) {
-        window.turnstile.execute("#turnstile-widget", {
-          action: "submit",
-          callback: (t: string) => resolve(t),
-          errorCallback: (err: any) => reject(err),
+        window.turnstile.reset("#turnstile-widget");
+        token = await new Promise<string>((resolve, reject) => {
+          window.turnstile.execute("#turnstile-widget", {
+            action: "submit",
+            callback: (t: string) => resolve(t),
+            errorCallback: (err: any) => reject(err),
+          });
+        });
+      }
+    } catch (err) {
+      toast({
+        title: "Verification failed",
+        description: "Please try again.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const amount = parseFloat(bidAmount.replace(/,/g, ''));
+    if (isNaN(amount) || amount < minNextBid) {
+      toast({ title: "Bid too low", description: `Minimum next bid is $${minNextBid.toLocaleString()}`, variant: "destructive" });
+      return;
+    }
+
+    const currentHighestMax = bids.length > 0 ? Math.max(...bids.map(b => b.maxAmount || b.amount)) : 0;
+    if (amount <= currentHighestMax) {
+      toast({
+        title: "Max bid too low",
+        description: `Please enter a max bid higher than $${currentHighestMax.toLocaleString()} to take the lead.`,
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API_BASE}/api/place-bid`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          amount: minNextBid,
+          maxAmount: amount,
+          name,
+          email,
+          pin: currentUser?.pin || pin,
+          turnstileToken: token,
+        })
+      });
+
+      const result = await res.json();
+
+      if (result.success) {
+        setCurrentUser({ name, email, pin: currentUser?.pin || pin });
+        setBidAmount("");
+        await fetchBids();
+        sendGHLTracking(name, email, amount, currentUser?.pin || pin);
+
+        toast({
+          title: "Bid placed successfully!",
+          description: `Auto-bidding active up to $${amount.toLocaleString()}`,
+          className: "bg-primary text-primary-foreground border-none"
+        });
+      } else if (result.error) {
+        toast({ title: "Bid rejected", description: result.error, variant: "destructive" });
+      }
+    } catch (err) {
+      toast({ title: "Failed to place bid", variant: "destructive" });
+    }
+  };
+
+  // ============================================
+  // handleUpdateMaxBid (NO Turnstile)
+  // ============================================
+  const handleUpdateMaxBid = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (isAuctionEnded || !currentUser) {
+      toast({ title: "Error", description: "Please sign in to update your max bid.", variant: "destructive" });
+      return;
+    }
+
+    const amount = parseFloat(editMaxBidAmount.replace(/,/g, ''));
+    if (isNaN(amount) || amount <= highestBid) {
+      toast({ title: "Invalid amount", description: `Max bid must be higher than current highest bid ($${highestBid.toLocaleString()})`, variant: "destructive" });
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API_BASE}/api/place-bid`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          amount: highestBid,
+          maxAmount: amount,
+          name: currentUser.name,
+          email: currentUser.email,
+          pin: currentUser.pin
+        })
+      });
+
+      const result = await res.json();
+
+      if (result.success) {
+        await fetchBids();
+        setEditMaxBidAmount("");
+        sendGHLTracking(
+          currentUser.name,
+          currentUser.email,
+          amount,
+          currentUser.pin
+        );
+        toast({
+          title: "Max Bid Updated",
+          description: `Your new maximum bid is now $${amount.toLocaleString()}`,
+          className: "bg-primary text-primary-foreground border-none"
         });
       } else {
-        reject(new Error("Turnstile not loaded"));
+        toast({ title: "Update failed", description: result.error, variant: "destructive" });
       }
-    });
-  } catch (err) {
-    toast({
-      title: "Verification failed",
-      description: "Please try again.",
-      variant: "destructive"
-    });
-    return;
-  }
-
-  const amount = parseFloat(bidAmount.replace(/,/g, ''));
-  if (isNaN(amount) || amount < minNextBid) {
-    toast({ title: "Bid too low", description: `Minimum next bid is $${minNextBid.toLocaleString()}`, variant: "destructive" });
-    return;
-  }
-
-  // === TIE PROTECTION ===
-  const currentHighestMax = bids.length > 0 ? Math.max(...bids.map(b => b.maxAmount || b.amount)) : 0;
-  if (amount <= currentHighestMax) {
-    toast({
-      title: "Max bid too low",
-      description: `Please enter a max bid higher than $${currentHighestMax.toLocaleString()} to take the lead.`,
-      variant: "destructive"
-    });
-    return;
-  }
-
-  try {
-    const res = await fetch(`${API_BASE}/api/place-bid`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        amount: minNextBid,
-        maxAmount: amount,
-        name,
-        email,
-        pin: currentUser?.pin || pin,
-        turnstileToken: token,           // ← Use the token variable directly
-      })
-    });
-
-    const result = await res.json();
-
-    if (result.success) {
-      setCurrentUser({ name, email, pin: currentUser?.pin || pin });
-      setBidAmount("");
-      setTurnstileToken("");
-      await fetchBids();
-      sendGHLTracking(name, email, amount, currentUser?.pin || pin);
-
-      toast({
-        title: "Bid placed successfully!",
-        description: `Auto-bidding active up to $${amount.toLocaleString()}`,
-        className: "bg-primary text-primary-foreground border-none"
-      });
-    } else if (result.error) {
-      toast({ title: "Bid rejected", description: result.error, variant: "destructive" });
+    } catch (err) {
+      toast({ title: "Failed to update max bid", variant: "destructive" });
     }
-  } catch (err) {
-    toast({ title: "Failed to place bid", variant: "destructive" });
-  }
-};
-
-  const handleUpdateMaxBid = async (e: React.FormEvent) => {
-  e.preventDefault();
-
-  if (isAuctionEnded || !currentUser) {
-    toast({ title: "Error", description: "Please sign in to update your max bid.", variant: "destructive" });
-    return;
-  }
-
-  // === Execute Turnstile for update ===
-  let token = "";
-  try {
-    if (window.turnstile) {
-      window.turnstile.reset("#turnstile-widget-update");
-      token = await new Promise<string>((resolve, reject) => {
-        window.turnstile.execute("#turnstile-widget-update", {
-          action: "update",
-          callback: (t: string) => resolve(t),
-          errorCallback: (err: any) => reject(err),
-        });
-      });
-    }
-  } catch (err) {
-    toast({
-      title: "Verification failed",
-      description: "Please try again.",
-      variant: "destructive"
-    });
-    return;
-  }
-
-  const amount = parseFloat(editMaxBidAmount.replace(/,/g, ''));
-  if (isNaN(amount) || amount <= highestBid) {
-    toast({ title: "Invalid amount", description: `Max bid must be higher than current highest bid ($${highestBid.toLocaleString()})`, variant: "destructive" });
-    return;
-  }
-
-  try {
-    const res = await fetch(`${API_BASE}/api/place-bid`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        amount: highestBid,
-        maxAmount: amount,
-        name: currentUser.name,
-        email: currentUser.email,
-        pin: currentUser.pin,
-        turnstileToken: token   // ← Send token
-      })
-    });
-    const result = await res.json();
-    if (result.success) {
-      await fetchBids();
-      setEditMaxBidAmount("");
-      sendGHLTracking(
-        currentUser.name,
-        currentUser.email,
-        amount,
-        currentUser.pin
-      );
-      toast({
-        title: "Max Bid Updated",
-        description: `Your new maximum bid is now $${amount.toLocaleString()}`,
-        className: "bg-primary text-primary-foreground border-none"
-      });
-    } else {
-      toast({ title: "Update failed", description: result.error, variant: "destructive" });
-    }
-  } catch (err) {
-    toast({ title: "Failed to update max bid", variant: "destructive" });
-  }
-};
+  };
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -503,15 +475,6 @@ const Index = () => {
                             <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground font-medium">$</span>
                             <Input type="number" value={editMaxBidAmount} onChange={(e) => setEditMaxBidAmount(e.target.value)} className="pl-8" min={highestBid + 100} step="100" placeholder="New max bid" required />
                           </div>
-                          
-                          {/* Turnstile for Update */}
-                            <div 
-                              id="turnstile-widget-update"
-                              className="cf-turnstile" 
-                              data-sitekey="0x4AAAAAADnaeZ7YWhG4R1VA"
-                              data-size="invisible"
-                            ></div>
-                          
                           <Button type="submit" className="w-full">Update Max Bid</Button>
                         </form>
                       </div>
@@ -529,15 +492,6 @@ const Index = () => {
                             <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground font-medium">$</span>
                             <Input type="number" value={editMaxBidAmount} onChange={(e) => setEditMaxBidAmount(e.target.value)} className="pl-8" min={highestBid + 100} step="100" placeholder="New max bid" required />
                           </div>
-                          
-                          {/* Turnstile for Update */}
-                            <div 
-                              id="turnstile-widget-update"
-                              className="cf-turnstile" 
-                              data-sitekey="0x4AAAAAADnaeZ7YWhG4R1VA"
-                              data-size="invisible"
-                            ></div>
-                          
                           <Button type="submit" className="w-full">Update Max Bid</Button>
                         </form>
                       </div>
@@ -568,7 +522,7 @@ const Index = () => {
                         <p className="text-xs text-muted-foreground text-right">Enter ${minNextBid.toLocaleString()} or more.</p>
                       </div>
 
-                      {/* === CLOUDFLARE TURNSTILE (Invisible) === */}
+                      {/* Turnstile for initial bid only */}
                       <div 
                         id="turnstile-widget"
                         className="cf-turnstile" 
