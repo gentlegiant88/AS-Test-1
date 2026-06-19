@@ -698,6 +698,27 @@ const Index = () => {
                       <p>
                         The winning bidder has <span className="font-medium text-zinc-300">24 hours</span> to respond. If they do not reply, we will contact the next highest bidder.
                       </p>
+                      {/* === NEW LINK TO TURNSTILE PRIVACY POLICY === */}
+                      <p className="mt-2">
+                        This site uses{" "}
+                        <a
+                          href="https://www.cloudflare.com/en-gb/turnstile-privacy-policy/"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[#c9a84c] hover:underline"
+                        >
+                          Cloudflare Turnstile
+                        </a>{" "}
+                        for bot protection. See their{" "}
+                        <a
+                          href="https://www.cloudflare.com/en-gb/turnstile-privacy-policy/"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[#c9a84c] hover:underline"
+                        >
+                          Privacy Policy
+                        </a>.
+                      </p>
                     </div>
                   </div>
 
