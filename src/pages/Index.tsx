@@ -264,49 +264,65 @@ const Index = () => {
 };
 
   const handleUpdateMaxBid = async (e: React.FormEvent) => {
-    e.preventDefault();
-    console.log("Update Max Bid button clicked!");  //add this line for testing
-    if (isAuctionEnded || !currentUser) {
-      toast({ title: "Error", description: "Please sign in to update your max bid.", variant: "destructive" });
-      return;
-    }
-    const amount = parseFloat(editMaxBidAmount.replace(/,/g, ''));
-    if (isNaN(amount) || amount <= highestBid) {
-      toast({ title: "Invalid amount", description: `Max bid must be higher than current highest bid ($${highestBid.toLocaleString()})`, variant: "destructive" });
-      return;
-    }
-    try {
-      const res = await fetch(`${API_BASE}/api/place-bid`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          amount: highestBid,
-          maxAmount: amount,
-          name: currentUser.name,
-          email: currentUser.email,
-          pin: currentUser.pin
-        })
+  e.preventDefault();
+  console.log("Update Max Bid button clicked!");
+
+  console.log("isAuctionEnded:", isAuctionEnded);
+  console.log("currentUser:", currentUser);
+
+  if (isAuctionEnded || !currentUser) {
+    toast({ title: "Error", description: "Please sign in to update your max bid.", variant: "destructive" });
+    console.log("Failed early check: auction ended or not logged in");
+    return;
+  }
+
+  const amount = parseFloat(editMaxBidAmount.replace(/,/g, ''));
+  console.log("Parsed amount:", amount);
+  console.log("Current highest bid:", highestBid);
+
+  if (isNaN(amount) || amount <= highestBid) {
+    toast({ title: "Invalid amount", description: `Max bid must be higher than current highest bid ($${highestBid.toLocaleString()})`, variant: "destructive" });
+    console.log("Failed amount validation");
+    return;
+  }
+
+  try {
+    const res = await fetch(`${API_BASE}/api/place-bid`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        amount: highestBid,
+        maxAmount: amount,
+        name: currentUser.name,
+        email: currentUser.email,
+        pin: currentUser.pin
+      })
+    });
+    const result = await res.json();
+    console.log("API Response:", result);
+
+    if (result.success) {
+      await fetchBids();
+      setEditMaxBidAmount("");
+      sendGHLTracking(
+        currentUser.name,
+        currentUser.email,
+        amount,
+        currentUser.pin
+      );
+      toast({
+        title: "Max Bid Updated",
+        description: `Your new maximum bid is now $${amount.toLocaleString()}`,
+        className: "bg-primary text-primary-foreground border-none"
       });
-      const result = await res.json();
-      if (result.success) {
-        await fetchBids();
-        setEditMaxBidAmount("");
-        sendGHLTracking(
-          currentUser.name,
-          currentUser.email,
-          amount,
-          currentUser.pin
-        );
-        toast({
-          title: "Max Bid Updated",
-          description: `Your new maximum bid is now $${amount.toLocaleString()}`,
-          className: "bg-primary text-primary-foreground border-none"
-        });
-      }
-    } catch (err) {
-      toast({ title: "Failed to update max bid", variant: "destructive" });
+    } else {
+      toast({ title: "Update failed", description: result.error || "Unknown error", variant: "destructive" });
     }
-  };
+  } catch (err) {
+    console.error("Update error:", err);
+    toast({ title: "Failed to update max bid", variant: "destructive" });
+  }
+};
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
