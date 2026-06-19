@@ -265,6 +265,7 @@ const Index = () => {
 
   const handleUpdateMaxBid = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log("Update Max Bid button clicked!");  //add this line for testing
     if (isAuctionEnded || !currentUser) {
       toast({ title: "Error", description: "Please sign in to update your max bid.", variant: "destructive" });
       return;
