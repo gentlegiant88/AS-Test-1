@@ -186,6 +186,10 @@ const Index = () => {
   // === Execute Turnstile and get token immediately ===
   let token = "";
   try {
+    // Reset the widget first so we always get a fresh token
+  if (window.turnstile) {
+    window.turnstile.reset("#turnstile-widget");
+  }
     token = await new Promise<string>((resolve, reject) => {
       if (window.turnstile) {
         window.turnstile.execute("#turnstile-widget", {
