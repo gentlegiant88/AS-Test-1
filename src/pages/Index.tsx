@@ -7,12 +7,18 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Clock, TrendingUp, ShieldCheck, Globe, History, ArrowRight, Activity, Award, CheckCircle, Bot, LogIn, LogOut } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
+// ============================================
+// CONSTANTS
+// ============================================
 const API_BASE = "https://auction-backend.daniel-hendricks1337.workers.dev";
 const DOMAIN_NAME = "lasvegascybertruck.com";
 const AUCTION_END_DATE = new Date("2026-07-04T00:00:00-07:00");
 const RESERVE_PRICE = 1000;
 const BID_INCREMENT = 100;
 
+// ============================================
+// TYPES
+// ============================================
 interface Bid {
   id: string;
   amount: number;
@@ -26,6 +32,9 @@ interface Bid {
 const Index = () => {
   const { toast } = useToast();
 
+  // ============================================
+  // STATE MANAGEMENT
+  // ============================================
   const [bids, setBids] = useState<Bid[]>([]);
   const [bidAmount, setBidAmount] = useState<string>("");
   const [name, setName] = useState<string>("");
@@ -33,6 +42,7 @@ const Index = () => {
   const [pin, setPin] = useState<string>("");
   const [editMaxBidAmount, setEditMaxBidAmount] = useState<string>("");
 
+  // Load user from localStorage on initial render
   const [currentUser, setCurrentUser] = useState<{name: string, email: string, pin?: string} | null>(() => {
     const saved = localStorage.getItem('auction_user');
     if (saved) {
@@ -41,28 +51,94 @@ const Index = () => {
     return null;
   });
 
-  const fetchBids = async () => {
-    try {
-      const res = await fetch(`${API_BASE}/api/bids`);
-      const data = await res.json();
-      const processed = (data.bids || [])
-        .map((b: any) => ({
-          ...b,
-          timestamp: new Date(b.timestamp)
-        }))
-        .sort((a, b) => b.amount - a.amount);
-      setBids(processed);
-    } catch (err) {
-      console.error("Failed to fetch bids", err);
-    }
-  };
-
+  // ============================================
+  // SMART POLLING (Replaces old simple 2-second polling)
+  // - Polls every 1 second when user is active
+  // - Slows to every 60 seconds after 5 minutes of inactivity
+  // - Immediately fetches when tab becomes visible again
+  // ============================================
   useEffect(() => {
+    let pollInterval: NodeJS.Timeout | null = null;
+    let inactivityTimer: NodeJS.Timeout | null = null;
+
+    const FAST_POLL = 1000;           // 1 second when active
+    const SLOW_POLL = 60000;          // 60 seconds when inactive
+    const INACTIVITY_LIMIT = 5 * 60 * 1000; // 5 minutes of no activity
+
+    // Fetch latest bids from backend
+    const fetchBids = async () => {
+      try {
+        const res = await fetch(`${API_BASE}/api/bids`);
+        const data = await res.json();
+        const processed = (data.bids || [])
+          .map((b: any) => ({
+            ...b,
+            timestamp: new Date(b.timestamp),
+          }))
+          .sort((a, b) => b.amount - a.amount);
+        setBids(processed);
+      } catch (err) {
+        console.error("Failed to fetch bids", err);
+      }
+    };
+
+    // Start or restart polling at a given interval
+    const startPolling = (interval: number) => {
+      if (pollInterval) clearInterval(pollInterval);
+      pollInterval = setInterval(fetchBids, interval);
+    };
+
+    // Reset inactivity timer (called on any user activity)
+    const resetInactivityTimer = () => {
+      if (inactivityTimer) clearTimeout(inactivityTimer);
+
+      // Switch back to fast polling
+      startPolling(FAST_POLL);
+
+      // Restart 5-minute inactivity timer
+      inactivityTimer = setTimeout(() => {
+        console.log("User inactive for 5 minutes - slowing down polling");
+        startPolling(SLOW_POLL);
+      }, INACTIVITY_LIMIT);
+    };
+
+    // Handle when the browser tab becomes visible again
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        console.log("Tab became visible - fetching immediately");
+        fetchBids();           // Immediate catch-up
+        resetInactivityTimer(); // Resume fast polling
+      }
+    };
+
+    // Initial fetch + start fast polling
     fetchBids();
-    const interval = setInterval(fetchBids, 2000);
-    return () => clearInterval(interval);
+    startPolling(FAST_POLL);
+    resetInactivityTimer();
+
+    // Listen for user activity (mouse, keyboard, clicks)
+    const activityEvents = ["mousemove", "keydown", "click"];
+    activityEvents.forEach((event) => {
+      window.addEventListener(event, resetInactivityTimer);
+    });
+
+    // Listen for tab visibility changes
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    // Cleanup when component unmounts
+    return () => {
+      if (pollInterval) clearInterval(pollInterval);
+      if (inactivityTimer) clearTimeout(inactivityTimer);
+      activityEvents.forEach((event) => {
+        window.removeEventListener(event, resetInactivityTimer);
+      });
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
   }, []);
 
+  // ============================================
+  // Persist currentUser to localStorage
+  // ============================================
   useEffect(() => {
     if (currentUser) {
       localStorage.setItem('auction_user', JSON.stringify(currentUser));
@@ -71,11 +147,18 @@ const Index = () => {
     }
   }, [currentUser]);
 
+  // ============================================
+  // LOGIN MODAL STATE
+  // ============================================
   const [isLoginOpen, setIsLoginOpen] = useState(false);
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPin, setLoginPin] = useState("");
 
+  // ============================================
+  // DERIVED VALUES
+  // ============================================
   const highestBid = bids.length > 0 ? bids[0].amount : 0;
+
   const isHighestBidder = currentUser && bids.length > 0
     ? bids[0].email?.toLowerCase() === currentUser.email?.toLowerCase()
     : false;
@@ -84,6 +167,7 @@ const Index = () => {
     ? bids.find(b => b.email?.toLowerCase() === currentUser.email?.toLowerCase())?.maxAmount
     : null;
 
+  // Stable bidder numbering based on first bid time
   const bidderNumberMap = bids.length > 0
     ? (() => {
         const uniqueEmails = [...new Set(
@@ -107,19 +191,23 @@ const Index = () => {
 
   const minNextBid = highestBid > 0 ? highestBid + BID_INCREMENT : 100;
 
+  // ============================================
+  // AUCTION TIMER
+  // ============================================
   const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
   const [isAuctionEnded, setIsAuctionEnded] = useState(false);
 
-  // Timer
   useEffect(() => {
     const calculateTimeLeft = () => {
       const now = new Date().getTime();
       const distance = AUCTION_END_DATE.getTime() - now;
+
       if (distance <= 0) {
         setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0 });
         setIsAuctionEnded(true);
         return true;
       }
+
       setTimeLeft({
         days: Math.floor(distance / (1000 * 60 * 60 * 24)),
         hours: Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
@@ -128,21 +216,37 @@ const Index = () => {
       });
       return false;
     };
+
     const ended = calculateTimeLeft();
     if (ended) return;
+
     const timer = setInterval(() => {
       if (calculateTimeLeft()) clearInterval(timer);
     }, 1000);
+
     return () => clearInterval(timer);
   }, []);
 
+  // ============================================
+  // GO HIGH LEVEL TRACKING
+  // ============================================
   const sendGHLTracking = (name: string, email: string, amount: number, pin: string) => {
     const trackingPayload = {
       type: "external_form_submission",
       timestamp: Date.now(),
       formId: "Auction Bid Form",
-      formData: { first_name: name, email, "contact.security_pin": pin, "contact.maximum_bid": amount },
-      formLabels: { first_name: "Full Name", email: "Email Address", "contact.security_pin": "Security PIN", "contact.maximum_bid": "Maximum Bid" },
+      formData: {
+        first_name: name,
+        email,
+        "contact.security_pin": pin,
+        "contact.maximum_bid": amount
+      },
+      formLabels: {
+        first_name: "Full Name",
+        email: "Email Address",
+        "contact.security_pin": "Security PIN",
+        "contact.maximum_bid": "Maximum Bid"
+      },
       url: window.location.href,
       title: document.title,
       path: window.location.pathname,
@@ -150,8 +254,11 @@ const Index = () => {
       trackingId: "tk_84945ef98ad64c818d00ae3bcd173cfc",
       locationId: "H71py0LtXYeIKk7smCSK",
       sessionId: crypto.randomUUID(),
-      properties: { deviceType: /Mobile|Android|iPhone/i.test(navigator.userAgent) ? "mobile" : "desktop" },
+      properties: {
+        deviceType: /Mobile|Android|iPhone/i.test(navigator.userAgent) ? "mobile" : "desktop"
+      },
     };
+
     fetch("https://backend.leadconnectorhq.com/external-tracking/events", {
       method: "POST",
       headers: { "Content-Type": "application/json", version: "2021-07-28" },
