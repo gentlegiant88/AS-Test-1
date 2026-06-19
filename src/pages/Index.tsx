@@ -585,7 +585,7 @@ const Index = () => {
                   <div className="pt-6 border-t border-white/5">
                     <div className="text-xs text-zinc-500 leading-relaxed">
                       <p className="mb-1">
-                        Your name and email are used only to contact the winning bidder. We do not sell or share your information.
+                        The purpose of this Auction is to gauge interest in the domain lasvegascybertruck.com, if the reserve price is met the seller is willing to continue with the sale using Escrow.com as the payment intermediary. Your name and email are used only to contact the winning bidder. We do not sell or share your information.
                         After the transaction completes through <span className="font-medium text-zinc-400">Escrow.com</span>, all data is deleted.
                       </p>
                       <p>
