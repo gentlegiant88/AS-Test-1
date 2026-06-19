@@ -466,7 +466,7 @@ const Index = () => {
                     <div className="bg-primary/10 border border-primary/20 rounded-xl p-8 text-center space-y-4">
                       <CheckCircle className="w-16 h-16 mx-auto text-[#c9a84c] mb-4" />
                       <h3 className="text-2xl font-bold text-white font-['Space_Grotesk']">Bid Placed!</h3>
-                      <p className="text-muted-foreground">You are currently the highest bidder.</p>
+                      <p className="text-emerald-600">You are currently the highest bidder.</p>
                       <p className="text-sm text-white">We will contact you at <span className="font-medium">{currentUser?.email}</span> if you win the auction.</p>
                       <div className="mt-6 pt-6 border-t border-primary/20">
                         <form onSubmit={handleUpdateMaxBid} className="space-y-4">
