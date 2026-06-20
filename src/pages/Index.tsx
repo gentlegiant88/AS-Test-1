@@ -552,7 +552,7 @@ const Index = () => {
                   </CardTitle>
                   {highestBid >= RESERVE_PRICE ? (
                     <p className="text-sm text-[#c9a84c] mt-3 font-medium flex items-center">
-                      <ShieldCheck className="w-4 h-4 mr-1.5" /> Reserve price met. Domain will be sold.
+                      <ShieldCheck className="w-4 h-4 mr-1.5" /> Reserve price met. Domain can be potentially sold.
                     </p>
                   ) : (
                     <p className="text-sm text-amber-400 mt-3 font-medium flex items-center">
