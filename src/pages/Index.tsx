@@ -616,7 +616,7 @@ const Index = () => {
                       </div>
                       {!currentUser && (
                         <div className="space-y-2">
-                          <label className="text-sm font-medium text-foreground">Set Security PIN</label>
+                          <label className="text-sm font-medium text-foreground">Set Login PIN</label>
                           <Input type="password" placeholder="••••" maxLength={10} value={pin} onChange={(e) => setPin(e.target.value)} required />
                         </div>
                       )}
