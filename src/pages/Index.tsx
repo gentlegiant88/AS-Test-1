@@ -696,7 +696,7 @@ const Index = () => {
                         After the transaction completes through <span className="font-medium text-zinc-400">Escrow.com</span>, all data is deleted.
                       </p>
                       <p>
-                        The winning bidder has <span className="font-medium text-zinc-300">24 hours</span> to respond. If they do not reply, we will contact the next highest bidder.
+                        The winning bidder has <span className="font-medium text-zinc-300">24 hours</span> to respond. If they do not reply, we will contact the next highest bidder. The email will come from <span className="font-medium text-zinc-300">info@lasvegascybertruck.com</span>
                       </p>
                       {/* === NEW LINK TO TURNSTILE PRIVACY POLICY === */}
                       <p className="mt-2">
