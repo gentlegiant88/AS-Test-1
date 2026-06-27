@@ -12,7 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 // ============================================
 const API_BASE = "https://auction-backend.daniel-hendricks1337.workers.dev";
 const DOMAIN_NAME = "lasvegascybertruck.com";
-const AUCTION_END_DATE = new Date("2026-07-04T00:00:00-07:00");
+const AUCTION_END_DATE = new Date("2027-07-04T00:00:00-07:00");
 const RESERVE_PRICE = 1000;
 const BID_INCREMENT = 100;
 
